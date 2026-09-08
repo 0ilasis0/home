@@ -1,0 +1,585 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<commands version="V002B">
+	<magic>51</magic>
+
+	<command ui="factory">
+	<name>Delay</name>
+	<type>W</type>
+	<length>86</length>
+	<code>C0</code>
+	<vccode>99</vccode>
+	<data0>00</data0>
+	<data1>05</data1>
+	<model/>
+	<style>2</style>
+	<prefix>C063079900XX</prefix>
+	<wlength>2</wlength>
+	<rlength>1</rlength>
+	<delay>0</delay>
+	<description>Delay XX:, 00~10 sec</description>
+	</command>
+
+
+	<command ui="factory">
+		<name>Power</name>
+		<type>W</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>01</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070100XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX:, 00: off, 01: on</description>
+	</command>
+
+	<command ui="factory">
+		<name>Factory Mode</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>02</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070200XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX:, 00: off, 01: on</description>
+	</command>
+
+	<command ui="factory">
+		<name>Factory Reset</name>
+		<type>W</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>03</vccode>
+		<data0>00</data0>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070300XX</prefix>
+		<wlength>1</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX:, 00: execute</description>
+	</command>
+
+	<command ui="factory">
+		<name>Burn in mode</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>04</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070400XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX:, 00: off, 01: on</description>
+	</command>
+
+	<command ui="factory">
+		<name>Input Source</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>05</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<data2>02</data2>
+		<data3>03</data3>
+		<data4>04</data4>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070500XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>1800</delay>
+		<description>XX:, 00: VGA, 01: HDMI, 02: DP, 03: USBC, 04:AUTO</description>
+	</command>
+
+	<command ui="factory">
+		<name>EDID WP</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>06</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070600XX</prefix>
+		<wlength>1</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX:, 00: Disable, 01: Enable</description>
+	</command>
+
+	<command ui="factory">
+		<name>Color temp</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>07</vccode>
+		<data0>36</data0>
+		<data1>41</data1>
+		<data2>5D</data2>
+		<data3>32</data3>
+		<data4>4B</data4>
+		<data5>64</data5>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070700XX</prefix>
+		<wlength>5</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX:, 00: USER , 36: 5400K , 41: 6500K , 5D: 9300K , 32: 5000K , 4B: 7500K , 64:
+			10000K</description>
+	</command>
+
+	<command ui="factory">
+		<name>Gamma</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>08</vccode>
+		<data0>00</data0>
+		<data1>12</data1>
+		<data2>14</data2>
+		<data3>16</data3>
+		<data4>18</data4>
+		<data5>20</data5>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070800XX</prefix>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX:, 00: Gamma Off , 12: Gamma 1.8 , 14: Gamma 2.0 , 16: Gamma 2.2 , 18: Gamma 2.4, 1A: Gamma 2.6, 20: DICOM</description>
+	</command>
+
+	<command ui="factory">
+		<name>Backlight/LED</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>09</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070900XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX:, 00: Disable, 01: Enable</description>
+	</command>
+
+	<command ui="factory">
+		<name>Brightness</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>0A</vccode>
+		<data0>00</data0>
+		<data1>64</data1>
+		<model></model>
+		<style>2</style>
+		<prefix>C063070A00XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX:, 00~64</description>
+	</command>
+
+	<command ui="factory">
+		<name>Contrast</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>0B</vccode>
+		<data0>00</data0>
+		<data1>64</data1>
+		<model></model>
+		<style>2</style>
+		<prefix>C063070B00XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX:, 00~64</description>
+	</command>
+
+	<command ui="factory">
+		<name>Sharpness</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>0D</vccode>
+		<data0>00</data0>
+		<data1>0A</data1>
+		<model></model>
+		<style>2</style>
+		<prefix>C063070D00XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX:, 00~0A</description>
+	</command>
+
+	<command ui="factory">
+		<name>Audio Volume</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>11</vccode>
+		<data0>00</data0>
+		<data1>64</data1>
+		<model></model>
+		<style>2</style>
+		<prefix>C063071100XX</prefix>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX:, 00~64</description>
+	</command>
+
+	<command ui="factory">
+		<name>OSD Language</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>0E</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<data2>02</data2>
+		<data3>03</data3>
+		<data4>04</data4>
+		<data5>05</data5>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070E00XX</prefix>
+		<wlength>6</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX:, 00:T Chinese , 01: English, 02: French , 03: German , 04: Italian , 05:
+			TBD</description>
+	</command>
+
+	<command ui="factory">
+		<name>Audio Mute</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>10</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<model></model>
+		<style>1</style>
+		<prefix>C063071000XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX:, 00: Mute Off, 01: Mute On</description>
+	</command>
+
+	<command ui="factory">
+		<name>Menu Key</name>
+		<type>W</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>0C</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<data2>02</data2>
+		<data3>03</data3>
+		<data4>04</data4>
+		<data5>05</data5>
+		<data6>06</data6>
+		<data7>07</data7>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070C00XX</prefix>
+		<wlength>8</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX:, 00: Off , 01: On , 02: Up , 03: Down , 04: Select/Enter, 05: Left/Adjust-,
+			06: Right/Adjust+ , 07: Return</description>
+	</command>
+
+	<command ui="factory">
+		<name>RGB Gain Red</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>0F</vccode>
+		<data0>00</data0>
+		<data1>FF</data1>
+		<model></model>
+		<style>3</style>
+		<prefix>C063070F00XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX: 00~FF</description>
+	</command>
+
+
+	<command ui="factory">
+		<name>RGB Gain Green</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>0F</vccode>
+		<data0>01</data0>
+		<data1>FF</data1>
+		<model></model>
+		<style>3</style>
+		<prefix>C063070F01XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX: 00~FF</description>
+	</command>
+
+
+	<command ui="factory">
+		<name>RGB Gain Blue</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>0F</vccode>
+		<data0>02</data0>
+		<data1>FF</data1>
+		<model></model>
+		<style>3</style>
+		<prefix>C063070F02XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX: 00~FF</description>
+	</command>
+
+
+	<command ui="factory">
+		<name>SN Number</name>
+		<type>R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>12</vccode>
+		<data0>00</data0>
+		<data1>00</data1>
+		<model></model>
+		<style>4</style>
+		<prefix>C06307120000</prefix>
+		<wlength>2</wlength>
+		<rlength>12</rlength>
+		<delay>0</delay>
+		<description>XX:, 00 execute</description>
+	</command>
+
+	<command ui="factory">
+		<name>Firmware Version</name>
+		<type>R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>13</vccode>
+		<data0>00</data0>
+		<data1>00</data1>
+		<model></model>
+		<style>4</style>
+		<prefix>C06307130000</prefix>
+		<wlength>2</wlength>
+		<rlength>14</rlength>
+		<delay>0</delay>
+		<description>XX:, 00 execute</description>
+	</command>
+
+	<command ui="factory">
+		<name>Temperature</name>
+		<type>R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>14</vccode>
+		<data0>00</data0>
+		<data1>00</data1>
+		<model></model>
+		<style>4</style>
+		<prefix>C07307140000</prefix>
+		<wlength>2</wlength>
+		<rlength>2</rlength>
+		<delay>0</delay>
+		<description>XX:, 00 execute</description>
+	</command>
+
+	<command ui="factory">
+		<name>ALC mode</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>15</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<data2>02</data2>
+		<data3>03</data3>
+		<data4>04</data4>
+		<data5>05</data5>
+		<model></model>
+		<style>1</style>
+		<prefix>C063071500XX</prefix>
+		<wlength>2</wlength>
+		<rlength>2</rlength>
+		<delay>0</delay>
+		<description>XX:, 00 execute, 01 mode1, 02 mode2, 03 mode3, 04 mode4, 05 mode5</description>
+	</command>
+
+	<command ui="factory">
+		<name>Command Error test</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>16</vccode>
+		<data0>00</data0>
+		<data1>FF</data1>
+		<model></model>
+		<style>2</style>
+		<prefix>C063071600XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+		<description>XX: 00~FF</description>
+	</command>
+
+
+	<command ui="factory">
+		<name>Write Gamma LUT</name>
+		<type>W/R</type>
+		<length>98</length>
+		<code>D0</code>
+		<vccode>05</vccode>
+
+		<data0>00</data0>
+		<data1>00</data1>
+		<data2>00</data2>	
+		<data3>00</data3>
+		
+		<data4 name="LUT_Byte00">BB</data4>
+		<data5 name="LUT_Byte01">CC</data5>
+		<data6 name="LUT_Byte02">DD</data6>
+		<data7 name="LUT_Byte03">EE</data7>
+		<data8 name="LUT_Byte04">FF</data8>
+		<data9 name="LUT_Byte05">11</data9>
+		<data10 name="LUT_Byte06">22</data10>
+		<data11 name="LUT_Byte07">33</data11>
+		<data12 name="LUT_Byte08">44</data12>
+		<data13 name="LUT_Byte19">55</data13>
+		<data14 name="LUT_Byte10">66</data14>
+		<data15 name="LUT_Byte11">77</data15>
+		<data16 name="LUT_Byte12">88</data16>
+		<data17 name="LUT_Byte13">99</data17>
+		<data18 name="LUT_Byte14">00</data18>
+		<data17 name="LUT_Byte15">99</data17>
+		
+
+
+		<model></model>
+		<style>4</style>
+		<prefix>D0650705GGXXYYAADLDHCS</prefix>
+
+		<wlength>19</wlength>
+		<rlength>2</rlength>
+		<delay>0</delay>
+		<description>GG: 12:Gamma 18 , 14: Gamma 20 , 16: Gamma 22 , 18 :Gamma 24 , 20: Gamma 26</description>
+		<description>XX: 36: 54 , 41: 65 , 5D :93</description>
+		<description>YY: 00: R , 01: G , 02: B</description>
+		<description>AA: 00~1F</description>
+		<description>DL:  LUT_Byte00, Gamma LUT first  byte</description>
+		<description>DH:  LUT_Byte01, Gamma LUT second  byte</description>
+	</command>
+
+	<command ui="factory">
+		<name>Factory RGB　Gain</name>
+		<type>W/R</type>
+		<length>87</length>
+		<code>D0</code>
+		<vccode>06</vccode>
+
+		<data0>00</data0>
+		<data1>00</data1>
+		<data2>00</data2>
+
+		<model></model>
+		<style>3</style>
+		<prefix>D0650706XXAABB</prefix>
+
+		<wlength>19</wlength>
+		<rlength>2</rlength>
+		<delay>0</delay>
+		<description>XX:, 36:CT 5400K , 41:CT 6500K , 5D:CT 9300K</description>
+		<description>AA:, 00: R , 01: G , 02: B</description>
+		<description>BB:, 00:  00~FF</description>
+
+	</command>
+
+
+
+
+
+	<command ui="factory">
+		<name>Color Temp Detail</name>
+		<type>R</type>
+		<length>86</length>
+		<code>D0</code>
+		<vccode>07</vccode>
+		<data0>00</data0>
+		<data1>00</data1>
+		<data2>00</data2>
+		<model></model>
+		<style>1</style>
+		<prefix>D07507070000</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+	</command>
+
+	<command ui="factory">
+		<name>Gamma Detail</name>
+		<type>R</type>
+		<length>86</length>
+		<code>D0</code>
+		<vccode>08</vccode>
+		<data0>00</data0>
+		<data1>00</data1>
+		<data2>00</data2>
+		<model></model>
+		<style>1</style>
+		<prefix>D07507080000</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+	</command>
+
+
+
+	<command ui="factory">
+		<name>Panel Detail</name>
+		<type>R</type>
+		<length>86</length>
+		<code>D0</code>
+		<vccode>00</vccode>
+		<data0>09</data0>
+		<model></model>
+		<style>1</style>
+		<prefix>D07507090000</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>0</delay>
+	</command>
+
+</commands>

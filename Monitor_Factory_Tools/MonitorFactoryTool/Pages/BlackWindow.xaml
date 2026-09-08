@@ -1,0 +1,130 @@
+﻿<Window x:Class="MonitorFactoryTool.Pages.BlackWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MonitorFactoryTool.Pages"
+        mc:Ignorable="d"
+        Title="BlackWindow" Height="600" Width="900"  WindowStyle="None" 
+
+    
+        AllowsTransparency="True"
+        Background="Black"
+        Topmost="False"
+        Loaded="BlackWindow_Loaded"
+        PreviewMouseDown="Window_PreviewMouseDown">
+
+    <Grid>
+
+
+        <Canvas x:Name="canvasRoot" Background="Black" />
+
+        <!-- 2. 左側 UI Pane -->
+
+        <Grid x:Name="MainGrid" HorizontalAlignment="Left" VerticalAlignment="Stretch" Width="270">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" MinHeight="58" />
+                <RowDefinition />
+            </Grid.RowDefinitions>
+
+
+
+            <!-- 上方區塊：標題 + 按鈕 -->
+            <StackPanel x:Name="TopPanel" Grid.Row="0"  Height="Auto" Orientation="Vertical" Background="#FFF0F0F0" Margin="0,0,0,0"  Width="270" >
+                <TextBlock Text="Control" FontWeight="Bold" Margin="10,5,10,5"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,10">
+                    <Button x:Name="buttonStart" Content="Start" Width="90" Margin="25,0" Click="buttonStart_Click" />
+                    <Button x:Name="buttonExit" Content="Exit" Width="90" Margin="25,0" Click="buttonExit_Click" />
+                </StackPanel>
+            </StackPanel>
+
+            <Grid Grid.Row="1">
+                <!-- 下方區塊：示意一些內容 -->
+                <StackPanel x:Name="BottomPanel" Orientation="Vertical" Height="Auto" Background="white" VerticalAlignment="Top"  HorizontalAlignment="Left"  Width="270">
+                    <Grid Margin="10,10,10,10" Height="18" Width="250">
+                        <TextBlock Text="Item" FontWeight="Bold" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+
+                        <TextBlock x:Name="ADBoard_FW" Text="Board FW: " FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+                    <!-- 模擬一些資訊 -->
+                    <ListBox x:Name="listBoxInfo" Margin="10,-5,0,10" Height="Auto" Width="250" HorizontalAlignment="Left">
+                        <ListBoxItem>Contrast:</ListBoxItem>
+                        <ListBoxItem>Uniformity:</ListBoxItem>
+                        <ListBoxItem>Color Temp 1:</ListBoxItem>
+                        <ListBoxItem>Color Temp 2:</ListBoxItem>
+                        <ListBoxItem>Color Temp 3:</ListBoxItem>
+                        <ListBoxItem>Gamma 1:</ListBoxItem>
+                        <ListBoxItem>Gamma 2:</ListBoxItem>
+                        <ListBoxItem>Gamma 3:</ListBoxItem>
+                        <ListBoxItem>Gamma 4:</ListBoxItem>
+                        <ListBoxItem>Gamma 5:</ListBoxItem>
+                        <ListBoxItem>Gamma 6:</ListBoxItem>
+                        <ListBoxItem>Gamma 7:</ListBoxItem>
+                        <ListBoxItem>Gamma 8:</ListBoxItem>
+                        <ListBoxItem>Gamma 9:</ListBoxItem>
+                        <ListBoxItem>Gamma 10:</ListBoxItem>
+                        <ListBoxItem>Gamma 11:</ListBoxItem>
+                        <ListBoxItem>Gamma 12:</ListBoxItem>
+                        <ListBoxItem>DICOM 1:</ListBoxItem>
+                        <ListBoxItem>DICOM 2:</ListBoxItem>
+                        <ListBoxItem>DICOM 3:</ListBoxItem>
+                    </ListBox>
+                </StackPanel>
+            </Grid>
+        </Grid>
+
+
+
+
+        <Border BorderBrush="White" BorderThickness="1"
+                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                    Margin="270,0,0,0" Padding="0" Width="600">
+
+            <StackPanel x:Name="MeasureInfoPanel" Orientation="Vertical" Background="Black" Width="600" Height="140" >
+
+                <!-- 設定內部共用樣式 -->
+                <StackPanel.Resources>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="FontSize" Value="20"/>
+                    </Style>
+                    <Style TargetType="TextBox">
+                        <Setter Property="Foreground" Value="White"/>
+                        <Setter Property="Background" Value="Black"/>
+                        <Setter Property="BorderBrush" Value="White"/>
+                        <Setter Property="FontSize" Value="20"/>
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="VerticalContentAlignment" Value="Center"/>
+                    </Style>
+                </StackPanel.Resources>
+
+                <TextBlock x:Name="textblockMeasureInfoTitle" Text="Measure Info" FontWeight="Bold" Margin="5,5,10,0"/>
+
+                <!-- 第一橫排：x, Y -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,0">
+                    <TextBlock x:Name="textblockMeasureInfoX" Text="x :" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <TextBox x:Name="textboxMeasureInfoX" Width="80" Height="25" Text="0000.00" Margin="5,2,5,2"/>
+
+                    <TextBlock x:Name="textblockMeasureInfoY" Text="Y :" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <TextBox x:Name="textboxMeasureInfoY" Width="80" Height="25" Text="0000.00" Margin="5,2,5,2"/>
+                </StackPanel>
+
+                <!-- 第二橫排：y, T -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,5">
+                    <TextBlock x:Name="textblockMeasureInfoSmallY" Text="y :" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <TextBox x:Name="textboxMeasureInfoSmallY" Width="80" Height="25" Text="0000.00" Margin="5,2,5,2"/>
+
+                    <TextBlock x:Name="textblockMeasureInfoT" Text="T :" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <TextBox x:Name="textboxMeasureInfoT" Width="80" Height="25" Text="0000.00" Margin="5,2,5,2"/>
+                </StackPanel>
+
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,0" Width="600">
+                    <!-- <TextBlock x:Name="textblockStatusInfo" Text="Status Info" FontWeight="Bold" Margin="10,5,0,0"/> -->
+
+                    <TextBlock x:Name="textblockStatus" Text="Doing ???"  FontWeight="Bold" Margin="5,5,5,5" Width="600"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

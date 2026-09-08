@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<commands version="V002A">
+	<magic>51</magic>
+	<command ui="factory">
+		<name>Power</name>
+		<type>W</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>01</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070100XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<description>XX:, 00: off, 01: on</description>
+	</command>
+
+	<command ui="factory">
+		<name>Factory Mode</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>02</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070200XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<description>XX:, 00: off, 01: on</description>
+	</command>
+
+	<command ui="factory">
+		<name>Factory Reset</name>
+		<type>W</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>03</vccode>
+		<data0>00</data0>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070300XX</prefix>
+		<wlength>1</wlength>
+		<rlength>1</rlength>
+		<description>XX:, 00: execute</description>
+	</command>
+
+	<command ui="factory">
+		<name>Burn in mode</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>04</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070400XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<description>XX:, 00: off, 01: on</description>
+	</command>
+
+	<command ui="factory">
+		<name>Input Source</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>05</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<data2>02</data2>
+		<data3>03</data3>
+		<data4>04</data4>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070500XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<delay>30000</delay>
+		<description>XX:, 00: VGA, 01: HDMI, 02: DP, 03: USBC, 04:AUTO</description>
+	</command>
+
+	<command ui="factory">
+		<name>EDID WP</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>06</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070600XX</prefix>
+		<wlength>1</wlength>
+		<rlength>1</rlength>
+		<description>XX:, 00: Disable, 01: Enable</description>
+	</command>
+
+	<command ui="factory">
+		<name>Color temp</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>07</vccode>
+		<data0>36</data0>
+		<data1>41</data1>
+		<data2>5D</data2>
+		<data3>32</data3>
+		<data4>4B</data4>
+		<data5>64</data5>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070700XX</prefix>
+		<wlength>5</wlength>
+		<rlength>1</rlength>
+		<description>XX:, 36: 5400K , 41: 6500K , 5D: 9300K , 32: 5000K , 4B: 7500K , 64: 10000K</description>
+	</command>
+
+	<command ui="factory">
+		<name>Gamma</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>08</vccode>
+		<data0>00</data0>
+		<data1>12</data1>
+		<data2>14</data2>
+		<data3>16</data3>
+		<data4>18</data4>
+		<data5>20</data5>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070800XX</prefix>
+		<rlength>1</rlength>
+		<description>XX:, 00: Gamma Off , 12: Gamma 1.8 , 14: Gamma 2.0 , 16: Gamma 2.2 , 18: Gamma 2.4, 20: DICOM</description>
+	</command>
+
+	<command ui="factory">
+		<name>Backlight/LED</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>09</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070900XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<description>XX:, 00: Disable, 01: Enable</description>
+	</command>
+
+	<command ui="factory">
+		<name>Brightness</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>0A</vccode>
+		<data0>00</data0>
+		<data1>64</data1>
+		<model></model>
+		<style>2</style>
+		<prefix>C063070A00XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<description>XX:, 00~64</description>
+	</command>
+
+	<command ui="factory">
+		<name>Contrast</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>0B</vccode>
+		<data0>00</data0>
+		<data1>64</data1>
+		<model></model>
+		<style>2</style>
+		<prefix>C063070B00XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<description>XX:, 00~64</description>
+	</command>
+
+	<command ui="factory">
+		<name>Sharpness</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>0D</vccode>
+		<data0>00</data0>
+		<data1>0A</data1>
+		<model></model>
+		<style>2</style>
+		<prefix>C063070D00XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<description>XX:, 00~0A</description>
+	</command>
+
+	<command ui="factory">
+		<name>Audio Volume</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>11</vccode>
+		<data0>00</data0>
+		<data1>64</data1>
+		<model></model>
+		<style>2</style>
+		<prefix>C063071100XX</prefix>
+		<rlength>1</rlength>
+		<description>XX:, 00~64</description>
+	</command>
+
+	<command ui="factory">
+		<name>OSD Language</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>0E</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<data2>02</data2>
+		<data3>03</data3>
+		<data4>04</data4>
+		<data5>05</data5>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070E00XX</prefix>
+		<wlength>6</wlength>
+		<rlength>1</rlength>
+		<description>XX:, 00:T Chinese , 01: English, 02: French , 03: German , 04: Italian , 05: TBD</description>
+	</command>
+
+	<command ui="factory">
+		<name>Audio Mute</name>
+		<type>W/R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>10</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<model></model>
+		<style>1</style>
+		<prefix>C063071000XX</prefix>
+		<wlength>2</wlength>
+		<rlength>1</rlength>
+		<description>XX:, 00: Mute Off, 01: Mute On</description>
+	</command>
+
+	<command ui="factory">
+		<name>Menu Key</name>
+		<type>W</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>0C</vccode>
+		<data0>00</data0>
+		<data1>01</data1>
+		<data2>02</data2>
+		<data3>03</data3>
+		<data4>04</data4>
+		<data5>05</data5>
+		<data6>06</data6>
+		<data7>07</data7>
+		<model></model>
+		<style>1</style>
+		<prefix>C063070C00XX</prefix>
+		<wlength>8</wlength>
+		<rlength>1</rlength>
+		<description>XX:, 00: Off , 01: On , 02: Up , 03: Down , 04: Select/Enter, 05: Left/Adjust-, 06: Right/Adjust+ , 07: Return</description>
+	</command>
+
+	<command ui="factory">
+		<name>RGB Gain</name>
+		<type>W/R</type>
+		<length>8A</length>
+		<code>C0</code>
+		<vccode>0F</vccode>
+		<data0>00</data0>
+		<data1>FF</data1>
+		<data2>01</data2>
+		<data3>FF</data3>
+		<data4>02</data4>
+		<data5>FF</data5>
+		<model></model>
+		<style>3</style>
+		<prefix>C063070FXXXXXXXXXXXX</prefix>
+		<wlength>6</wlength>
+		<rlength>3</rlength>
+		<description>XXXX:, 00 Red: 00~FF, 01 Green: 00~FF, 02 Blue: 00~FF</description>
+	</command>
+
+
+	<command ui="factory">
+		<name>SN Number</name>
+		<type>R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>12</vccode>
+		<data0>00</data0>
+		<data1>00</data1>
+		<model></model>
+		<style>4</style>
+		<prefix>C06307120000</prefix>
+		<wlength>2</wlength>
+		<rlength>12</rlength>
+		<description>XX:, 00 execute</description>
+	</command>
+
+	<command ui="factory">
+		<name>Firmware Version</name>
+		<type>R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>13</vccode>
+		<data0>00</data0>
+		<data1>00</data1>
+		<model></model>
+		<style>4</style>
+		<prefix>C06307130000</prefix>
+		<wlength>2</wlength>
+		<rlength>14</rlength>
+		<description>XX:, 00 execute</description>
+	</command>
+	
+	<command ui="factory">
+		<name>Temperature</name>
+		<type>R</type>
+		<length>86</length>
+		<code>C0</code>
+		<vccode>14</vccode>
+		<data0>00</data0>
+		<data1>00</data1>
+		<model></model>
+		<style>4</style>
+		<prefix>C07307140000</prefix>
+		<wlength>2</wlength>
+		<rlength>2</rlength>
+		<description>XX:, 00 execute</description>
+	</command>
+</commands>
