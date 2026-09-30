@@ -11,14 +11,23 @@ You are NOT being asked to execute the task.
 Your responsibilities in this command are:
 
 1. Determine the current project state.
+
 2. Determine the current development phase.
+
 3. Identify the current approved baseline.
+
 4. Determine what work has already been completed.
+
 5. Determine what work is currently in progress.
+
 6. Identify verification results and unresolved failures.
+
 7. Identify blockers and dependencies.
+
 8. Determine which AI role owns the next task.
+
 9. Generate exactly one next executable Task Prompt.
+
 10. Ensure the Task Prompt is consistent with all approved project artifacts.
 
 Do not perform the assigned task yourself.
@@ -32,19 +41,33 @@ Before generating the next task, inspect all relevant available project artifact
 At minimum, check:
 
 * Project State
+
 * Specification
+
 * Architecture
+
 * Interface
+
 * Clock / Reset definition
+
 * Verification Plan
+
 * RTL Coding Standard
+
 * Current RTL status
+
 * Current Verification status
+
 * Existing HANDOFF.md
+
 * Decision Log
+
 * Open Issues
+
 * Previous Task results
+
 * Verification evidence
+
 * Relevant EDA evidence, if the project has reached that phase
 
 Use the project's established source-of-truth hierarchy.
@@ -52,8 +75,11 @@ Use the project's established source-of-truth hierarchy.
 If two authoritative artifacts conflict:
 
 1. Do NOT silently resolve the conflict.
+
 2. Mark the conflict explicitly.
+
 3. Block task generation if the conflict affects the proposed task.
+
 4. Identify the human or engineering role required to resolve it.
 
 Never invent missing information.
@@ -65,28 +91,47 @@ Never invent missing information.
 Before generating a task, explicitly determine:
 
 ```text
+
 PROJECT PHASE:
+
 PROJECT STATUS:
+
 CURRENT BASELINE:
+
 CURRENT VERSION:
+
 ARCHITECTURE STATUS:
+
 RTL STATUS:
+
 VERIFICATION STATUS:
+
 CURRENT ACTIVE TASK:
+
 BLOCKERS:
+
 OPEN ISSUES:
+
 RECENT FAILURES:
+
 RECENT PASSING EVIDENCE:
+
 ```
 
 Distinguish clearly between:
 
 * CONFIRMED
+
 * VERIFIED
+
 * NOT VERIFIED
+
 * PROPOSED
+
 * UNKNOWN
+
 * CONFLICT
+
 * BLOCKED
 
 Do not treat assumptions as confirmed facts.
@@ -100,21 +145,31 @@ Construct the current task progression from available evidence.
 For example:
 
 ```text
-TASK-001  RTL Input Capture
+
+TASK-001  RTL Input Capture
+
 Status: COMPLETE
+
 Evidence: compile PASS + verification PASS
 
-TASK-002  Input Capture Verification
+TASK-002  Input Capture Verification
+
 Status: COMPLETE
+
 Evidence: regression PASS
 
-TASK-003  Datapath RTL
+TASK-003  Datapath RTL
+
 Status: IN PROGRESS
+
 Owner: AI-2
 
-TASK-004  Datapath Verification
+TASK-004  Datapath Verification
+
 Status: BLOCKED
+
 Reason: TASK-003 incomplete
+
 ```
 
 Do not infer completion merely because an AI previously said it was complete.
@@ -124,7 +179,9 @@ Completion must be supported by the required evidence.
 If evidence is missing:
 
 ```text
+
 Status = NOT VERIFIED
+
 ```
 
 ---
@@ -138,12 +195,19 @@ Use the established role boundaries.
 Responsible for:
 
 * Project state
+
 * Task planning
+
 * Task assignment
+
 * Dependency management
+
 * Baseline/version control
+
 * Phase control
+
 * Handoff control
+
 * Evidence/status tracking
 
 AI-0 must NOT perform engineering implementation.
@@ -153,11 +217,17 @@ AI-0 must NOT perform engineering implementation.
 Responsible for:
 
 * Requirement interpretation
+
 * Architecture
+
 * Mathematical/algorithmic definition
+
 * Cycle-level behavior
+
 * Interface behavior
+
 * Architecture trade-offs
+
 * Architecture change analysis
 
 ### AI-2 RTL Engineer
@@ -165,10 +235,15 @@ Responsible for:
 Responsible for:
 
 * RTL implementation
+
 * Incremental RTL development
+
 * Synthesizable Verilog
+
 * Architecture-compliant implementation
+
 * RTL self-review
+
 * RTL fixes based on verification evidence
 
 ### AI-3 Verification Engineer
@@ -176,14 +251,23 @@ Responsible for:
 Responsible for:
 
 * Verification planning
+
 * Testbench
+
 * Reference model
+
 * Directed/random tests
+
 * Assertions/checkers
+
 * Scoreboard
+
 * Regression
+
 * Coverage
+
 * Failure analysis
+
 * Verification evidence
 
 ### Independent Reviewer
@@ -199,12 +283,19 @@ Do not create unnecessary reviewer tasks during ordinary incremental development
 Select the next task using the following priority:
 
 1. Resolve blocking issue.
+
 2. Resolve specification/architecture conflict.
+
 3. Complete required verification for an implemented increment.
+
 4. Fix RTL after a verified RTL-related failure.
+
 5. Implement the next required RTL increment.
+
 6. Perform required verification.
+
 7. Complete phase exit requirements.
+
 8. Proceed to the next phase only when the current phase satisfies its exit criteria.
 
 Do not select a future task if its dependencies are incomplete.
@@ -228,30 +319,51 @@ Instead divide the work into meaningful increments.
 Each increment must have:
 
 ```text
+
 TASK ID
+
 OBJECTIVE
+
 SCOPE
+
 OUT OF SCOPE
+
 DEPENDENCIES
+
 REQUIRED INPUTS
+
 EXPECTED OUTPUTS
+
 VERIFICATION REQUIREMENTS
+
 EVIDENCE REQUIREMENTS
+
 EXIT CRITERIA
+
 ```
 
 An increment should be small enough that:
 
 ```text
+
 RTL implementation
-        ↓
+
+        ↓
+
 verification
-        ↓
+
+        ↓
+
 failure/fix if required
-        ↓
+
+        ↓
+
 regression
-        ↓
+
+        ↓
+
 release next increment
+
 ```
 
 can be performed with clear evidence.
@@ -267,13 +379,19 @@ The Task Prompt must be directly executable by the assigned AI.
 Use the following format:
 
 ```text
+
 ==================================================
+
 TASK PROMPT
+
 ==================================================
 
 TASK ID:
+
 TASK TYPE:
+
 PHASE:
+
 OWNER:
 
 OBJECTIVE:
@@ -309,8 +427,11 @@ FORBIDDEN ACTIONS:
 HANDOFF REQUIREMENTS:
 
 ==================================================
+
 END TASK PROMPT
+
 ==================================================
+
 ```
 
 ---
@@ -330,14 +451,23 @@ What the assigned AI must NOT do during this task.
 Examples:
 
 ```text
+
 OUT OF SCOPE:
+
 - Architecture redesign
+
 - Interface modification
+
 - Pipeline modification
+
 - Latency modification
+
 - Verification environment modification
+
 - Premature optimization
+
 - Changes unrelated to this increment
+
 ```
 
 Only include restrictions relevant to the task.
@@ -351,16 +481,27 @@ If Architecture is FROZEN:
 The Task Prompt must explicitly state that the assigned AI must not change:
 
 * interface
+
 * protocol
+
 * latency
+
 * throughput
+
 * pipeline structure
+
 * cycle-level behavior
+
 * clock/reset behavior
+
 * mathematical definition
+
 * output ordering
+
 * state behavior
+
 * memory organization
+
 * CDC assumptions
 
 unless an approved Architecture Change exists.
@@ -368,11 +509,13 @@ unless an approved Architecture Change exists.
 If the task appears to require such a change:
 
 ```text
+
 DO NOT GENERATE AN IMPLEMENTATION TASK.
 
 Instead report:
 
 ARCHITECTURE CHANGE REQUIRED
+
 ```
 
 and identify the required decision.
@@ -386,30 +529,51 @@ RTL work must not automatically progress to the next RTL increment.
 For each RTL increment:
 
 ```text
+
 RTL implementation
-      ↓
+
+      ↓
+
 Verification
-      ↓
+
+      ↓
+
 PASS
-      ↓
+
+      ↓
+
 Next increment
+
 ```
 
 If verification FAILS:
 
 ```text
+
 Verification FAIL
-      ↓
+
+      ↓
+
 Classify failure
-      ↓
+
+      ↓
+
 AI-0 determines owner
-      ↓
+
+      ↓
+
 RTL fix / TB fix / reference model fix /
+
 architecture clarification
-      ↓
+
+      ↓
+
 Re-verification
-      ↓
+
+      ↓
+
 PASS required before progression
+
 ```
 
 Do not allow the project to progress simply because the RTL compiles.
@@ -421,15 +585,25 @@ Do not allow the project to progress simply because the RTL compiles.
 If a failure exists, determine its classification:
 
 ```text
+
 RTL BUG
+
 ARCHITECTURE MISMATCH
+
 SPECIFICATION AMBIGUITY
+
 TESTBENCH BUG
+
 REFERENCE MODEL BUG
+
 CHECKER BUG
+
 EDA / TOOL ISSUE
+
 ENVIRONMENT ISSUE
+
 UNKNOWN
+
 ```
 
 Do not assume the RTL is wrong merely because verification failed.
@@ -449,25 +623,39 @@ Every task must define what evidence is required before it can be marked COMPLET
 Examples:
 
 ```text
+
 RTL task:
+
 - compilation PASS
+
 - required self-review PASS
+
 - required simulation/verification completed
 
 Verification task:
+
 - tests executed
+
 - expected vs actual comparison
+
 - PASS/FAIL result
+
 - regression result if required
 
 Synthesis-related task:
+
 - synthesis completed
+
 - relevant reports generated
+
 - warnings reviewed
+
 - required checks completed
 
 Do not invent EDA results.
+
 Do not claim PASS without evidence.
+
 ```
 
 ---
@@ -479,22 +667,29 @@ If the next action requires a human decision, do NOT generate an engineering tas
 Instead report:
 
 ```text
+
 HUMAN DECISION REQUIRED
 
 Decision:
+
 ...
 
 Why required:
+
 ...
 
 Affected artifacts:
+
 ...
 
 Possible consequences:
+
 ...
 
 Current project state:
+
 BLOCKED
+
 ```
 
 Human approval is required for major changes to frozen architecture, specification, interface, clock/reset, or project baseline.
@@ -540,7 +735,9 @@ Provide the complete Task Prompt for the assigned AI.
 If none:
 
 ```text
+
 NONE
+
 ```
 
 Do not execute the generated task.
@@ -556,5 +753,7 @@ Do not perform verification.
 Do not invent missing evidence.
 
 ==================================================
+
 END OF COMMAND
+
 ==============

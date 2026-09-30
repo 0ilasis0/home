@@ -5,431 +5,412 @@ TASK PROMPT
 ==================================================
 
 TASK ID:
-RTL-INC-001
+P1-ARCH-REVIEW
 
 TASK TYPE:
-Incremental RTL Implementation
+Architecture Review / Freeze Readiness Assessment
 
 PHASE:
-RTL Implementation
+P1 — Architecture Review
 
 OWNER:
-AI-2 RTL Engineer
+AI-1 System Architect
 
 OBJECTIVE:
 
-Implement the first RTL increment of the Triangle Rendering Engine.
+對目前已建立的 Triangle Rendering Engine Architecture artifact
+進行正式 Architecture Review，確認其：
 
-The objective is to establish the architecture-compliant top-level RTL skeleton, asynchronous reset behavior, P1/P2/P3 input-capture protocol, FSM foundation, and required busy timing.
+1. 是否與 Project Specification 一致
+2. 是否與已確認的 interface / timing / reset behavior 一致
+3. Candidate C bounded-scan architecture 是否內部一致
+4. E12 / E23 arithmetic definition 與 signedness / width requirement
+   是否足以直接約束 RTL implementation
+5. busy timing、output ordering、scan behavior、reset behavior
+   是否沒有未解決的 architecture ambiguity
+6. 哪些事項可以進入 Human / Project Owner approval
+7. 哪些事項仍需要 Architecture clarification 或 Human Decision
 
-This task must NOT implement the geometry scan datapath yet.
+本 Task 的目的不是重新設計 Architecture，
+而是確認目前 Architecture artifact 是否具備
+進入 approval / freeze gate 的條件。
 
----
 
 CURRENT PROJECT STATE:
 
-* Project Specification is established.
-* Architecture baseline is Candidate C — Bounded Coordinate Scan.
-* Arithmetic definition is FROZEN.
-* RTL Coding Standard is established.
-* RTL implementation has not yet been established as a verified artifact.
-* No verified RTL simulation evidence is currently available.
-* No synthesis, STA, gate-level, P&R, DRC, or LVS evidence is available.
+Architecture artifact 已建立。
 
----
+目前 Architecture 狀態為:
+
+UNDER REVIEW / NOT FROZEN
+
+Candidate C bounded scan 為目前 working architecture candidate，
+但尚未取得可核對的 Human / Project Owner approval。
+
+目前已有 `triangle.v` RTL candidate，
+但其 correctness / verification status 為 NOT VERIFIED。
+
+目前沒有足夠 evidence 支持：
+
+- Architecture FROZEN
+- RTL VERIFIED
+- Synthesis PASS
+- STA PASS
+- P&R PASS
+- DRC/LVS PASS
+
 
 CURRENT BASELINE:
 
-Candidate C — Bounded Coordinate Scan.
+Candidate C — PROPOSED / WORKING ARCHITECTURE BASELINE
 
-The final architecture behavior is:
+不是 Frozen Baseline。
 
-IDLE
-→
-CAPTURE_P2
-→
-CAPTURE_P3
-→
-SCAN
-→
-IDLE
+不得將 Candidate C 在本 Task 中自行升級為
+Approved / Frozen Baseline。
 
-There is NO RELEASE state.
 
----
+CURRENT RTL VERSION / CANDIDATE:
+
+可辨識 RTL artifact:
+
+triangle.v
+
+正式 RTL version number / candidate ID:
+UNKNOWN
+
+不得自行建立新的正式 version number。
+
+本 Task 不是 RTL implementation / modification task，
+不得修改 RTL。
+
 
 SOURCE OF TRUTH:
 
-Use the following hierarchy:
+依既有 hierarchy：
 
 1. Project Specification
-2. Frozen Architecture decisions
-3. Frozen Arithmetic definition
-4. RTL Coding Standard
-5. This task prompt
+2. 已確認 Interface / Timing / Clock-Reset decisions
+3. Architecture Document
+4. Verification requirements
+5. RTL
+6. RTL Coding Standard
 
-If a conflict is discovered, STOP and report it.
+若發現 authoritative artifacts 之間存在衝突：
 
-Do not silently resolve an architecture/specification conflict.
+DO NOT SILENTLY RESOLVE.
 
----
+必須明確列出：
+
+CONFLICT
+SOURCE A
+SOURCE B
+AFFECTED DECISION
+REQUIRED RESOLUTION OWNER
+
 
 REQUIRED INPUT ARTIFACTS:
 
 1. Project Specification
 2. Current Architecture Document
-3. Frozen Arithmetic definition
-4. RTL Coding Standard
+3. Interface definition
+4. Clock / Reset definition
+5. Verification requirements / plan（若目前已有）
+6. RTL Coding Standard
+7. Current identifiable `triangle.v` RTL candidate
+8. Existing task / handoff / decision evidence（若可取得）
 
-If any required artifact available to the project is inconsistent with the above constraints, do not proceed with an implementation decision. Report the conflict.
-
----
 
 TASK SCOPE:
 
-### IN SCOPE
+IN SCOPE:
 
-Implement only the first RTL increment containing:
+1. Review Architecture against Specification。
+2. Review interface and cycle-level behavior。
+3. Review input protocol:
+   - N: P1
+   - N+1: P2
+   - N+2: P3
+4. Review busy timing:
+   - N+1 rising edge captures P2
+   - busy becomes 1 after that edge
+   - P3 is captured at N+2
+5. Review reset semantics:
+   - active-high asynchronous reset
+   - reset/idle => busy=0, po=0
+6. Review Candidate C bounded scan:
+   - y1 -> y3
+   - x=min(x1,x2) -> max(x1,x2)
+7. Review output ordering:
+   - y ascending
+   - x strictly increasing within each y
+8. Review E12 / E23 mathematical definitions。
+9. Review signed arithmetic constraints:
+   - coordinate/difference width
+   - product width
+   - edge-result width
+   - explicit sign extension
+   - explicit signed comparisons
+10. Review E31 elimination rationale。
+11. Review final scan -> IDLE / busy release behavior。
+12. Identify all remaining architecture-level ambiguities。
+13. Determine whether Architecture is ready for Human / Project Owner
+    approval and freeze consideration。
+14. Compare the Architecture constraints against the existing RTL
+    only to identify obvious architecture mismatch.
+15. Produce an explicit review result and required decisions。
 
-1. Exact top-level module:
-
-   module triangle (
-   clk,
-   reset,
-   nt,
-   xi,
-   yi,
-   busy,
-   po,
-   xo,
-   yo
-   );
-
-2. Explicit Verilog-2001 port declarations.
-
-3. Asynchronous active-high reset.
-
-4. FSM foundation using `localparam`.
-
-5. Required architectural states:
-
-   * IDLE
-   * CAPTURE_P2
-   * CAPTURE_P3
-   * SCAN
-
-6. P1 capture:
-
-   At Cycle N, when `nt=1` and the design is in IDLE:
-
-   * capture P1 `(x1,y1)`
-   * remain protocol-compliant with `busy=0`
-   * transition toward P2 capture.
-
-7. P2 capture:
-
-   At Cycle N+1:
-
-   * capture P2 `(x2,y2)`
-   * after the N+1 rising edge, `busy` must be HIGH.
-
-8. P3 capture foundation:
-
-   At Cycle N+2:
-
-   * capture P3 y-coordinate.
-   * x3 must NOT be stored as a dedicated register because architecture defines `x3=x1`.
-   * transition to SCAN initialization/foundation as required by the architecture.
-
-9. Busy behavior foundation:
-
-   * IDLE: `busy=0`
-   * after P2 capture: `busy=1`
-   * busy remains asserted through P3 capture / non-IDLE operation.
-
-10. Reset behavior:
-
-    During active reset:
-
-    * `busy=0`
-    * `po=0`
-
-    Reset state must be IDLE.
-
-11. RTL coding discipline:
-
-    * Verilog only.
-    * `.v` RTL.
-    * No SystemVerilog constructs.
-    * Sequential logic uses non-blocking assignment.
-    * Combinational logic uses blocking assignment.
-    * Explicit widths.
-    * Explicit signedness where applicable.
-    * No implicit nets.
-    * No latch.
-    * No multiple drivers.
-    * No combinational loop.
-    * No `initial`.
-    * No delays.
-    * No testbench-only constructs.
-    * No SVA.
-    * No arbitrary generated/gated clock.
-
-12. Use meaningful `_q` / `_d` naming where applicable.
-
-13. Keep module hierarchy appropriate to the actual architecture. Do NOT create tiny modules solely for this increment.
-
----
 
 OUT OF SCOPE:
 
-* Geometry scan implementation.
-* E12 calculation.
-* E23 calculation.
-* E31 calculation.
-* Inside/outside classification.
-* Boundary arithmetic.
-* `xo/yo` point generation.
-* Output ordering implementation beyond keeping `po=0` in this increment.
-* Candidate B optimization.
-* Pipeline modification.
-* Resource sharing optimization.
-* Timing optimization.
-* Area optimization.
-* Architecture redesign.
-* Interface modification.
-* Protocol modification.
-* Verification environment modification.
-* Testbench hacks.
-* Synthesis optimization.
-* Any change to Frozen Arithmetic.
+- Do not modify RTL.
+- Do not modify Architecture Document.
+- Do not freeze Architecture.
+- Do not approve Architecture on behalf of Human / Project Owner.
+- Do not redesign Candidate C.
+- Do not introduce Candidate B implementation.
+- Do not change interface.
+- Do not change latency.
+- Do not change protocol.
+- Do not change busy semantics.
+- Do not change reset behavior.
+- Do not change output ordering.
+- Do not optimize arithmetic.
+- Do not perform RTL coding.
+- Do not claim simulation / synthesis / STA / P&R evidence that was not actually executed.
+- Do not infer verification PASS from RTL inspection.
 
----
 
 DEPENDENCIES:
 
-This task depends on:
+1. Current Specification must remain authoritative.
+2. Current Architecture artifact must be available for review.
+3. Any unresolved Specification / Architecture conflict must be
+   explicitly reported rather than silently resolved.
 
-* Frozen Architecture.
-* Frozen Arithmetic.
-* RTL Coding Standard.
+If an essential authoritative artifact cannot be identified,
+report the missing artifact and classify the affected review item
+as NOT VERIFIED / BLOCKED.
 
-No dependency on Candidate B is permitted.
-
-No future optimization decision is required.
-
----
 
 FROZEN CONSTRAINTS:
 
-The implementation MUST NOT change:
+Architecture is NOT YET FROZEN.
 
-* top-level interface
-* port widths
-* input protocol
-* N/N+1/N+2 timing
-* busy timing
-* asynchronous active-high reset
-* FSM architectural behavior
-* x1=x3 assumption
-* coordinate domain 0~7
-* arithmetic definition
-* output protocol
-* output ordering
-* final SCAN → IDLE behavior
-* omission of E31
-* Candidate C architecture
+However, the following currently documented architecture decisions
+must be treated as the working constraints under review and must not
+be silently changed:
 
-The implementation must not introduce a RELEASE state.
+- top-level interface:
+  triangle(clk, reset, nt, xi, yi, busy, po, xo, yo)
+- Verilog RTL implementation baseline
+- coordinate domain 0~7
+- legal triangle x1=x3, y1<y2<y3
+- input sequence N/N+1/N+2
+- busy assertion at N+1 edge
+- asynchronous active-high reset
+- Candidate C bounded scan
+- y ascending
+- x ascending within each y
+- E12 / E23 cross-product formulation
+- no E31 datapath for Candidate C
+- signed arithmetic width discipline
+- po=1 means xo/yo valid
+- po=0 means xo/yo don't-care
+- current final scan -> IDLE working decision
 
-The implementation must not store a dedicated x3 register.
-
----
-
-IMPLEMENTATION / VERIFICATION REQUIREMENTS:
-
-### RTL implementation
-
-Produce the RTL source for this increment as a synthesizable Verilog-2001 `.v` file.
-
-The implementation must be structurally clear enough for independent code review.
-
-The FSM should follow the Coding Standard:
-
-* `localparam` state encoding
-* state register
-* next-state logic
-* default assignments
-* explicit default/illegal-state handling
-
-If output/control logic is separated from next-state logic, avoid multiple drivers.
-
-### Basic self-check
-
-Before declaring the increment complete, inspect at minimum:
-
-* reset sensitivity
-* reset state
-* P1 capture timing
-* P2 capture timing
-* P3 capture timing
-* busy assertion timing
-* no unintended x3 storage
-* no unintended po assertion
-* no latch
-* no multiple driver
-* no implicit signedness/width issue
-* no SystemVerilog syntax
-* no simulation-only RTL construct
-
----
-
-EXPECTED OUTPUTS:
-
-1. RTL source for the increment.
-
-2. Module/file name consistent with the required top-level `triangle` module.
-
-3. Brief implementation change record containing:
-
-   * What changed
-   * Why it changed
-   * Module changed
-   * Architecture dependency
-   * Interface impact
-   * Timing/latency impact
-   * Verification status
-
-4. Any discovered issue must be explicitly classified rather than silently patched.
-
----
-
-REQUIRED EVIDENCE:
-
-1. RTL source artifact/version.
-2. Compilation/elaboration result.
-3. RTL Coding Standard self-review result.
-4. Change record:
-   - What changed
-   - Why
-   - Module changed
-   - Architecture dependency
-   - Interface impact
-   - Timing/latency impact
-   - Resource impact if applicable
-5. Explicit statement:
-
-   RTL IMPLEMENTATION COMPLETE
-   FUNCTIONAL VERIFICATION = NOT VERIFIED
-
-Formal simulation evidence is owned by RTL Verification Engineer.
-
----
-
-EXIT CRITERIA:
-
-This task is COMPLETE when:
-
-- required RTL increment is implemented;
-- required top-level interface is unchanged;
-- P1/P2/P3 capture logic is implemented according to Architecture;
-- busy timing logic is implemented according to Architecture;
-- reset behavior is implemented according to Architecture;
-- RTL Coding Standard self-review is complete;
-- RTL compilation/elaboration passes;
-- no unresolved RTL compile/elaboration issue remains.
-
-Formal functional simulation is NOT an exit criterion of this task.
-
-The RTL implementation must be handed off to RTL Verification Engineer for
-independent simulation and verification.
-
-If simulation has not yet been performed:
-
-Status = IMPLEMENTED / NOT VERIFIED
-
-The RTL Engineer must not claim functional verification PASS.
-
----
-
-FAILURE / BLOCKING RULES:
-
-If compilation fails:
-
-* classify the failure;
-* fix only issues within this increment;
-* rerun compilation.
-
-If simulation fails:
-
-* identify the first divergence;
-* classify the failure as appropriate:
-
-  * RTL BUG
-  * ARCHITECTURE MISMATCH
-  * TESTBENCH BUG
-  * REFERENCE MODEL BUG
-  * CHECKER BUG
-  * TOOL / ENVIRONMENT ISSUE
-  * UNKNOWN
-
-Do not modify RTL merely to force the expected simulation result.
-
-If the failure indicates an Architecture conflict:
-
-STOP.
-
-Report:
+If any of these requires change, report:
 
 ARCHITECTURE CHANGE REQUIRED
 
-Do not redesign the architecture inside this task.
+and do not silently modify the decision.
 
----
+
+IMPLEMENTATION / VERIFICATION REQUIREMENTS:
+
+This is an architecture review task.
+
+No RTL implementation is required.
+
+No simulation PASS may be claimed unless actual simulation evidence
+is available.
+
+No synthesis / STA / P&R result may be claimed unless actual evidence
+is available.
+
+The review must distinguish:
+
+CONFIRMED
+VERIFIED
+NOT VERIFIED
+PROPOSED
+UNKNOWN
+CONFLICT
+BLOCKED
+
+Architecture reasoning alone must not be labelled VERIFIED.
+
+
+EXPECTED OUTPUTS:
+
+Produce an Architecture Review Result containing at least:
+
+1. Architecture Review Status
+2. Specification Consistency
+3. Interface Consistency
+4. Timing / Cycle Consistency
+5. Reset Consistency
+6. Candidate C Consistency
+7. Arithmetic / Signedness Consistency
+8. Output Ordering Consistency
+9. Final Busy / IDLE Assessment
+10. RTL-to-Architecture Observations
+11. Open Architecture Issues
+12. Human Decision Required items
+13. Freeze Readiness Assessment
+14. Recommended next project action
+
+For every identified issue include:
+
+- Issue
+- Severity
+- Source
+- Why it matters
+- Affected artifact
+- Required owner
+- Required decision
+- Status
+
+
+REQUIRED EVIDENCE:
+
+The task result must include:
+
+- Architecture artifact identity reviewed
+- Architecture candidate identity if available
+- Specification identity reviewed if available
+- RTL artifact identity inspected, if inspected
+- No invented formal version number
+- Review findings with traceability to source sections / decisions
+- Explicit list of unresolved issues
+- Explicit list of Human Decision Required items
+- Explicit statement whether Architecture is:
+  - NOT READY
+  - READY FOR HUMAN REVIEW
+  - READY FOR FREEZE CONSIDERATION
+
+If RTL was inspected, explicitly identify:
+
+RTL artifact:
+triangle.v
+
+RTL formal version / candidate:
+UNKNOWN, unless an actual documented identity is found.
+
+Do not convert code inspection into functional verification evidence.
+
+
+EXIT CRITERIA:
+
+Task is COMPLETE only when:
+
+1. Architecture review has been performed against available
+   authoritative artifacts.
+2. No known architecture conflict is silently left unresolved.
+3. All significant architecture ambiguities are explicitly listed.
+4. Human Decision Required items are explicitly identified.
+5. Freeze readiness is explicitly classified.
+6. Any RTL-to-Architecture mismatch found by inspection is recorded.
+7. No Architecture or RTL modification was performed.
+
+
+FAILURE / BLOCKING RULES:
+
+If Specification and Architecture conflict:
+
+STOP and report CONFLICT.
+
+If required authoritative artifact is unavailable:
+
+report BLOCKED / NOT VERIFIED for the affected review item.
+
+If a decision requires Human / Project Owner approval:
+
+report:
+
+HUMAN DECISION REQUIRED
+
+Do not approve it autonomously.
+
+If current RTL cannot be reliably identified:
+
+do not invent a version or candidate identity.
+
+If review discovers that the current architecture requires a
+substantive change before implementation:
+
+report:
+
+ARCHITECTURE CHANGE REQUIRED
+
 
 FORBIDDEN ACTIONS:
 
-* Do not implement the entire Triangle RTL.
-* Do not implement SCAN geometry in this increment.
-* Do not modify Frozen Arithmetic.
-* Do not add E31.
-* Do not add a RELEASE state.
-* Do not change busy timing.
-* Do not change input protocol.
-* Do not change output protocol.
-* Do not change top-level interface.
-* Do not introduce SystemVerilog.
-* Do not introduce testbench logic into RTL.
-* Do not add debug ports.
-* Do not use simulation-only constructs.
-* Do not optimize architecture.
-* Do not create unnecessary tiny modules.
-* Do not declare PASS without executed evidence.
-* Do not hide verification failures.
+- No RTL modification.
+- No Architecture modification.
+- No baseline freeze.
+- No version invention.
+- No silent conflict resolution.
+- No implementation optimization.
+- No Candidate B implementation.
+- No verification PASS claim without evidence.
+- No synthesis / STA / P&R claim without evidence.
+- No Human approval simulation.
+- No assumption that an existing RTL candidate is verified merely
+  because it exists.
 
----
 
 HANDOFF REQUIREMENTS:
 
-When this task is complete, return:
+Return the completed Architecture Review Result to AI-0 Project Manager.
 
-1. RTL artifact/version.
-2. Compilation evidence.
-3. Basic simulation evidence.
-4. Coding Standard review result.
-5. Change record.
-6. Any remaining issue.
-7. Explicit status:
+The handoff must explicitly state:
 
-   VERIFIED
+SOURCE ROLE:
+AI-1 System Architect
 
-or
+DESTINATION ROLE:
+AI-0 Project Manager
 
-NOT VERIFIED
+SOURCE ARTIFACT:
+Architecture Review Result
 
-The next RTL increment must not be started by this task.
+ARCHITECTURE STATUS:
+UNDER REVIEW / READY FOR HUMAN REVIEW / NOT READY
 
-AI-0 will determine the next task only after reviewing the returned evidence.
+CURRENT ARCHITECTURE CANDIDATE:
+Candidate C, unless the review finds a documented conflict
+
+RTL ARTIFACT INSPECTED:
+triangle.v, if actually inspected
+
+RTL VERSION / CANDIDATE:
+actual identifiable identity, otherwise UNKNOWN
+
+VERIFICATION STATUS:
+NOT VERIFIED unless actual evidence exists
+
+OPEN ISSUES:
+explicit list
+
+HUMAN DECISION REQUIRED:
+explicit list
+
+NEXT ACTION:
+one recommended next action for AI-0 to evaluate
+
+Do not modify any project baseline or frozen decision as part of
+this handoff.
 
 ==================================================
 
