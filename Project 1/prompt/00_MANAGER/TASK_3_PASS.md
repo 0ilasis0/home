@@ -40,7 +40,6 @@ RTL artifact、RTL version / increment identity、Verification baseline 應在 R
 
 例如：
 
-* waveform
 * functional coverage
 * code coverage
 * formal evidence
