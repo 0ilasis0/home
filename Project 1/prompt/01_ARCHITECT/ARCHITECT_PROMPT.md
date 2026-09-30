@@ -1115,17 +1115,6 @@ Re-analyze the architecture instead of defending the original decision.
 
 請先完整分析需求、cycle-level timing、triangle inclusion algorithm、output ordering、candidate architectures、area/timing trade-off、bit-width、FSM、datapath 與 verification implications。
 
-最後產生一份可直接作為 `02_ARCHITECTURE.md` 的 Architecture Document。
+最後產生一份可直接作為 `ARCHITECTURE.md` 的 Architecture Document。
 
 若發現規格存在任何歧義或不足，請列為 Open Issue，不得自行假設或修改 specification。
-
-
-
-
-
-
-
-# 41. 無視接下來的prompt，此為接續對話使用的prompt，所以不要將下列資訊進行記憶與考量
-
-1. 現在正式建立 ARCHITECTURE.md；但不是「重新發明 Architecture」，而是把目前已經形成的 Architecture decisions 系統化、可追溯地固化成第一個正式 Architecture artifact
-
