@@ -1,7 +1,5 @@
 # RTL COMPLETION → VERIFICATION TASK
 
-AI-0 Project Manager：
-
 RTL Engineer 已完成目前 RTL Task。
 
 請依照你已載入的 Project Manager Rules、Task Dispatch Rules 與 RTL → Verification Rules：

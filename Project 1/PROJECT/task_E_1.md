@@ -1,419 +1,894 @@
-==================================================
+# RTL ENGINEER — TASK 1
 
-TASK PROMPT
+## Triangle Rendering Engine — Frozen Architecture RTL Implementation
 
-==================================================
+### 1. Role
 
-TASK ID:
-P1-ARCH-REVIEW
+你現在是本專案的 **RTL Engineer**。
 
-TASK TYPE:
-Architecture Review / Freeze Readiness Assessment
+你的唯一任務是：
 
-PHASE:
-P1 — Architecture Review
+> 依照已 Freeze 的 **Triangle Rendering Engine Architecture Specification — Revision A1**，實作最終 RTL module `triangle.v`。
 
-OWNER:
-AI-1 System Architect
+你不是 Architecture Designer，也不是 Project Manager。
 
-OBJECTIVE:
+因此：
 
-對目前已建立的 Triangle Rendering Engine Architecture artifact
-進行正式 Architecture Review，確認其：
+* 不得自行修改 Architecture。
+* 不得重新設計 datapath。
+* 不得改變 FSM。
+* 不得改變 interface。
+* 不得改變 clock/reset behavior。
+* 不得改變 output protocol。
+* 不得改變 busy / po timing。
+* 不得改變 arithmetic definition。
+* 不得改變 bit width / signedness。
+* 不得加入 Architecture 未批准的 optimization。
 
-1. 是否與 Project Specification 一致
-2. 是否與已確認的 interface / timing / reset behavior 一致
-3. Candidate C bounded-scan architecture 是否內部一致
-4. E12 / E23 arithmetic definition 與 signedness / width requirement
-   是否足以直接約束 RTL implementation
-5. busy timing、output ordering、scan behavior、reset behavior
-   是否沒有未解決的 architecture ambiguity
-6. 哪些事項可以進入 Human / Project Owner approval
-7. 哪些事項仍需要 Architecture clarification 或 Human Decision
+若你認為 Architecture 有矛盾或 RTL 無法忠實實作，**停止該部分實作並回報 Issue**，不得自行修正 Architecture。
 
-本 Task 的目的不是重新設計 Architecture，
-而是確認目前 Architecture artifact 是否具備
-進入 approval / freeze gate 的條件。
+---
 
+# 2. Frozen Baseline
 
-CURRENT PROJECT STATE:
+以下文件全部視為 frozen requirements：
 
-Architecture artifact 已建立。
+1. Project Specification
+2. Architecture Specification — Revision A1
+3. Final Verification Testbench
+4. 已批准的 Architecture Decisions
 
-目前 Architecture 狀態為:
+Architecture Freeze 後，RTL 必須以 Architecture 為唯一 implementation baseline。
 
-UNDER REVIEW / NOT FROZEN
+---
 
-Candidate C bounded scan 為目前 working architecture candidate，
-但尚未取得可核對的 Human / Project Owner approval。
+# 3. Mandatory Top Module
 
-目前已有 `triangle.v` RTL candidate，
-但其 correctness / verification status 為 NOT VERIFIED。
+RTL 必須提供：
 
-目前沒有足夠 evidence 支持：
+```verilog
+module triangle (
+    clk,
+    reset,
+    nt,
+    xi,
+    yi,
+    busy,
+    po,
+    xo,
+    yo
+);
+```
 
-- Architecture FROZEN
-- RTL VERIFIED
-- Synthesis PASS
-- STA PASS
-- P&R PASS
-- DRC/LVS PASS
+不得：
 
+* 更改 port 名稱
+* 更改 port 順序
+* 增加 external port
+* 移除 port
+* 改變 input/output direction
+* 改變 interface protocol
 
-CURRENT BASELINE:
+Coordinate：
 
-Candidate C — PROPOSED / WORKING ARCHITECTURE BASELINE
+* `xi`：3-bit unsigned
+* `yi`：3-bit unsigned
+* `xo`：3-bit output
+* `yo`：3-bit output
 
-不是 Frozen Baseline。
+---
 
-不得將 Candidate C 在本 Task 中自行升級為
-Approved / Frozen Baseline。
+# 4. Clock / Reset
 
+Clock：
 
-CURRENT RTL VERSION / CANDIDATE:
+* positive-edge triggered
+* synchronous datapath/control behavior
 
-可辨識 RTL artifact:
+Reset：
 
+* active-high
+* asynchronous
+
+RTL 必須使用與 Architecture 一致的 asynchronous reset implementation。
+
+Reset 後至少必須保證：
+
+```text
+FSM      = IDLE
+busy     = 0
+po       = 0
+xo       = reset value
+yo       = reset value
+```
+
+所有 state/control/datapath registers 都必須具有明確 reset behavior。
+
+---
+
+# 5. Input Protocol
+
+每個 triangle 由三個 consecutive cycles 輸入：
+
+```text
+Cycle N     nt=1   P1
+Cycle N+1   nt=0   P2
+Cycle N+2   nt=0   P3
+```
+
+P1：
+
+```text
+(x1, y1)
+```
+
+P2：
+
+```text
+(x2, y2)
+```
+
+P3：
+
+```text
+(x3, y3)
+```
+
+Geometry constraint：
+
+```text
+x1 = x3
+y1 < y2 < y3
+x2 != x1
+```
+
+Coordinates：
+
+```text
+0 <= x <= 7
+0 <= y <= 7
+```
+
+`nt` 只有在 `busy=0` 時有效。
+
+---
+
+# 6. Busy Protocol
+
+Architecture-defined behavior：
+
+```text
+P1 input
+    ↓
+P2 input
+    ↓
+P3 input
+    ↓
+processing
+    ↓
+output
+    ↓
+RELEASE
+    ↓
+IDLE
+```
+
+重要要求：
+
+> 在 P3 input 所屬 cycle，`busy` 必須已經為 `1`。
+
+Output 最後一個 valid point：
+
+```text
+po   = 1
+busy = 1
+```
+
+下一 cycle：
+
+```text
+po   = 0
+busy = 1
+```
+
+RELEASE 完成後下一 cycle：
+
+```text
+po   = 0
+busy = 0
+```
+
+不得自行縮短或修改此 protocol。
+
+---
+
+# 7. Mandatory FSM
+
+必須依 Architecture 使用以下 FSM：
+
+```text
+IDLE
+CAPTURE_P2
+CAPTURE_P3
+INIT_COLUMN
+
+LOWER_INIT
+LOWER_TRACE
+LOWER_CLAMP
+
+UPPER_INIT
+UPPER_TRACE
+UPPER_CLAMP
+
+OUTPUT_SCAN
+RELEASE
+```
+
+不得：
+
+* 移除 Architecture-required state
+* 合併 state
+* 新增 pipeline state
+* 改變 state semantic
+
+除非你發現 Architecture 無法實作，否則不得自行修改 FSM。
+
+---
+
+# 8. Column Storage
+
+必須使用：
+
+```text
+ylow[0:7]
+yup [0:7]
+```
+
+共：
+
+```text
+8 x ylow
+8 x yup
+```
+
+不得加入 valid bit。
+
+不得另外建立 endpoint-only storage 取代 common storage。
+
+Endpoint initialization：
+
+```text
+ylow[x1] = y1
+yup [x1] = y3
+
+ylow[x2] = y2
+yup [x2] = y2
+```
+
+Intermediate columns 必須透過 tracer 建立。
+
+---
+
+# 9. Geometry Parameters
+
+必須明確處理：
+
+```text
+dx   = x2 - x1
+dy12 = y2 - y1
+dy32 = y2 - y3
+s    = sign(x2 - x1)
+```
+
+Required widths：
+
+```text
+coordinate : unsigned 3-bit
+dx         : signed 4-bit
+dy12       : signed 4-bit
+dy32       : signed 4-bit
+E_trace    : signed 9-bit
+```
+
+RTL 必須：
+
+* 明確 signed declaration
+* 明確 sign extension
+* 明確 expression width
+* 明確 signed comparison
+
+不得依賴 Verilog implicit sizing / implicit signedness。
+
+---
+
+# 10. Edge Equations
+
+## LOWER
+
+必須使用：
+
+```text
+E_L = dx(y-y1) - (x-x1)dy12
+```
+
+inside condition：
+
+```text
+sE_L >= 0
+```
+
+其中：
+
+```text
+sE_L = s * E_L
+```
+
+Step：
+
+```text
+x += s
+    => E -= s*dy12
+
+y += 1
+    => E += dx
+```
+
+LOWER_INIT：
+
+```text
+candidate x = x1 + s
+candidate y = y1
+E = -s*dy12
+```
+
+LOWER_INIT **不得 evaluate candidate**。
+
+---
+
+# 11. LOWER_TRACE
+
+若 candidate inside：
+
+```text
+ylow[x] = y
+```
+
+若下一個 x 已到 x2：
+
+```text
+LOWER 完成
+```
+
+否則：
+
+```text
+x += s
+E -= s*dy12
+```
+
+若 candidate outside：
+
+```text
+y += 1
+E += dx
+```
+
+若 y 已達 y2：
+
+```text
+ylow[x] = y2
+```
+
+然後進入：
+
+```text
+LOWER_CLAMP
+```
+
+---
+
+# 12. LOWER_CLAMP
+
+對剩餘 intermediate columns：
+
+```text
+ylow[x] = y2
+```
+
+直到 x2。
+
+不得修改 x2 endpoint column。
+
+---
+
+# 13. UPPER
+
+必須使用：
+
+```text
+E_U = (x-x3)dy32 - dx(y-y3)
+```
+
+inside condition：
+
+```text
+sE_U >= 0
+```
+
+Step：
+
+```text
+x += s
+    => E += s*dy32
+
+y -= 1
+    => E += dx
+```
+
+UPPER_INIT：
+
+```text
+candidate x = x1 + s
+candidate y = y3
+E = s*dy32
+```
+
+UPPER_INIT **不得 evaluate candidate**。
+
+---
+
+# 14. UPPER_TRACE
+
+若 candidate inside：
+
+```text
+yup[x] = y
+```
+
+若下一個 x 已到 x2：
+
+```text
+UPPER 完成
+```
+
+否則：
+
+```text
+x += s
+E += s*dy32
+```
+
+若 candidate outside：
+
+```text
+y -= 1
+E += dx
+```
+
+若 y 已達 y2：
+
+```text
+yup[x] = y2
+```
+
+然後進入：
+
+```text
+UPPER_CLAMP
+```
+
+---
+
+# 15. UPPER_CLAMP
+
+對剩餘 intermediate columns：
+
+```text
+yup[x] = y2
+```
+
+直到 x2。
+
+不得修改 x2 endpoint column。
+
+---
+
+# 16. |dx| = 1 Shortcut
+
+這是 Frozen Architecture 的明確 decision。
+
+當：
+
+```text
+|x2 - x1| = 1
+```
+
+代表不存在 intermediate column。
+
+因此：
+
+```text
+INIT_COLUMN
+    ↓
+OUTPUT_SCAN
+```
+
+不得執行：
+
+```text
+LOWER_INIT
+LOWER_TRACE
+LOWER_CLAMP
+UPPER_INIT
+UPPER_TRACE
+UPPER_CLAMP
+```
+
+Endpoint columns 已經由 INIT_COLUMN 完成 initialization。
+
+---
+
+# 17. Shared Tracer
+
+LOWER / UPPER 必須共用 tracer datapath：
+
+```text
+x_trace
+y_trace
+E_trace
+trace_mode
+```
+
+不得實作兩套平行 tracer。
+
+`trace_mode` 必須能明確區分：
+
+```text
+LOWER
+UPPER
+```
+
+---
+
+# 18. Output Scanner
+
+Output 必須：
+
+```text
+y ascending
+x ascending
+```
+
+也就是：
+
+```text
+for y = y1 ... y3
+    for x = x_left ... x_right
+```
+
+其中：
+
+```text
+x_left  = min(x1,x2)
+x_right = max(x1,x2)
+```
+
+candidate：
+
+```text
+inside =
+    (ylow[x] <= y) &&
+    (y <= yup[x])
+```
+
+若 inside：
+
+```text
+po = 1
+xo = x
+yo = y
+```
+
+若 outside：
+
+```text
+po = 0
+```
+
+但 scanner 必須繼續。
+
+---
+
+# 19. Registered Output Requirement
+
+`po/xo/yo` 必須為 registered outputs。
+
+Architecture-defined timing：
+
+> Enter `OUTPUT_SCAN` 時初始化 scanner candidate；下一個 rising edge 才產生第一個 registered valid output。
+
+不得改成 combinational output。
+
+不得提前一 cycle 輸出。
+
+不得改變 output latency。
+
+---
+
+# 20. Expected Ordering Example
+
+對：
+
+```text
+P1 = (1,1)
+P2 = (6,3)
+P3 = (1,6)
+```
+
+輸出必須：
+
+```text
+(1,1)
+
+(1,2)
+(2,2)
+(3,2)
+
+(1,3)
+(2,3)
+(3,3)
+(4,3)
+(5,3)
+(6,3)
+
+(1,4)
+(2,4)
+(3,4)
+(4,4)
+
+(1,5)
+(2,5)
+
+(1,6)
+```
+
+不得改變 ordering。
+
+---
+
+# 21. RTL Coding Requirements
+
+請優先使用清楚、可 synthesis 的 RTL。
+
+要求：
+
+* FSM state 使用明確 encoding / enum-style structure
+* sequential logic 與 combinational logic 清楚分離
+* 所有 registers 有明確 reset behavior
+* 避免 latch
+* 避免 implicit signed conversion
+* 避免 unsized arithmetic constants 導致 width ambiguity
+* arithmetic intermediate 必須使用明確 width
+* comparison 必須明確 signed / unsigned
+* 不使用不可 synthesis construct
+* 不使用 real number
+* 不使用 delay-based functional logic
+* 不使用 testbench-only construct
+* 不加入 assertion 取代 functional RTL
+* 不加入 Architecture 未定義的 memory macro
+* 不加入 pipeline
+
+RTL 必須可以供：
+
+```text
+RTL simulation
+Synthesis
+Gate-level simulation
+SDF simulation
+```
+
+使用。
+
+---
+
+# 22. Final Testbench Compatibility
+
+RTL 必須能直接接上 Project Final Verification Testbench：
+
+```text
+triangle top(
+    clk,
+    reset,
+    nt,
+    xi,
+    yi,
+    busy,
+    po,
+    xo,
+    yo
+);
+```
+
+不得要求 testbench 修改 interface。
+
+不得要求 testbench 改變 input protocol。
+
+不得要求 testbench 改變 expected output ordering。
+
+---
+
+# 23. Implementation Deliverable
+
+你的主要 deliverable：
+
+```text
 triangle.v
+```
 
-正式 RTL version number / candidate ID:
-UNKNOWN
+並在交付時附上簡短 implementation report，內容：
 
-不得自行建立新的正式 version number。
+### A. Implemented
 
-本 Task 不是 RTL implementation / modification task，
-不得修改 RTL。
+列出實作完成的 Architecture sections。
 
+### B. State Mapping
 
-SOURCE OF TRUTH:
+列出每一個 FSM state 的 RTL implementation 對應。
 
-依既有 hierarchy：
+### C. Arithmetic Width
 
-1. Project Specification
-2. 已確認 Interface / Timing / Clock-Reset decisions
-3. Architecture Document
-4. Verification requirements
-5. RTL
-6. RTL Coding Standard
+列出：
 
-若發現 authoritative artifacts 之間存在衝突：
+```text
+dx
+dy12
+dy32
+E_trace
+```
 
-DO NOT SILENTLY RESOLVE.
+實際 RTL declaration / extension / comparison 的處理方式。
 
-必須明確列出：
+### D. Protocol Timing
 
-CONFLICT
-SOURCE A
-SOURCE B
-AFFECTED DECISION
-REQUIRED RESOLUTION OWNER
+說明：
 
+```text
+P1
+P2
+P3
+first output
+last output
+RELEASE
+IDLE
+```
 
-REQUIRED INPUT ARTIFACTS:
+的 cycle relationship。
 
-1. Project Specification
-2. Current Architecture Document
-3. Interface definition
-4. Clock / Reset definition
-5. Verification requirements / plan（若目前已有）
-6. RTL Coding Standard
-7. Current identifiable `triangle.v` RTL candidate
-8. Existing task / handoff / decision evidence（若可取得）
+### E. Architecture Compliance
 
+逐項確認是否遵守：
 
-TASK SCOPE:
+```text
+FSM
+column storage
+shared tracer
+edge equations
+clamp
+x2 termination
+|dx|=1 shortcut
+registered output
+busy protocol
+reset
+```
 
-IN SCOPE:
+---
 
-1. Review Architecture against Specification。
-2. Review interface and cycle-level behavior。
-3. Review input protocol:
-   - N: P1
-   - N+1: P2
-   - N+2: P3
-4. Review busy timing:
-   - N+1 rising edge captures P2
-   - busy becomes 1 after that edge
-   - P3 is captured at N+2
-5. Review reset semantics:
-   - active-high asynchronous reset
-   - reset/idle => busy=0, po=0
-6. Review Candidate C bounded scan:
-   - y1 -> y3
-   - x=min(x1,x2) -> max(x1,x2)
-7. Review output ordering:
-   - y ascending
-   - x strictly increasing within each y
-8. Review E12 / E23 mathematical definitions。
-9. Review signed arithmetic constraints:
-   - coordinate/difference width
-   - product width
-   - edge-result width
-   - explicit sign extension
-   - explicit signed comparisons
-10. Review E31 elimination rationale。
-11. Review final scan -> IDLE / busy release behavior。
-12. Identify all remaining architecture-level ambiguities。
-13. Determine whether Architecture is ready for Human / Project Owner
-    approval and freeze consideration。
-14. Compare the Architecture constraints against the existing RTL
-    only to identify obvious architecture mismatch.
-15. Produce an explicit review result and required decisions。
+# 24. 禁止自行宣稱 Verification PASS
 
+你是 RTL Engineer。
 
-OUT OF SCOPE:
+因此完成 `triangle.v` **不代表 verification PASS**。
 
-- Do not modify RTL.
-- Do not modify Architecture Document.
-- Do not freeze Architecture.
-- Do not approve Architecture on behalf of Human / Project Owner.
-- Do not redesign Candidate C.
-- Do not introduce Candidate B implementation.
-- Do not change interface.
-- Do not change latency.
-- Do not change protocol.
-- Do not change busy semantics.
-- Do not change reset behavior.
-- Do not change output ordering.
-- Do not optimize arithmetic.
-- Do not perform RTL coding.
-- Do not claim simulation / synthesis / STA / P&R evidence that was not actually executed.
-- Do not infer verification PASS from RTL inspection.
+除非真的有 RTL simulation evidence，禁止使用：
 
+```text
+PASS
+Verified
+Correct
+Signoff-ready
+Timing-clean
+Synthesis-clean
+```
 
-DEPENDENCIES:
+作為未驗證結果。
 
-1. Current Specification must remain authoritative.
-2. Current Architecture artifact must be available for review.
-3. Any unresolved Specification / Architecture conflict must be
-   explicitly reported rather than silently resolved.
+若尚未執行 simulation，請標示：
 
-If an essential authoritative artifact cannot be identified,
-report the missing artifact and classify the affected review item
-as NOT VERIFIED / BLOCKED.
-
-
-FROZEN CONSTRAINTS:
-
-Architecture is NOT YET FROZEN.
-
-However, the following currently documented architecture decisions
-must be treated as the working constraints under review and must not
-be silently changed:
-
-- top-level interface:
-  triangle(clk, reset, nt, xi, yi, busy, po, xo, yo)
-- Verilog RTL implementation baseline
-- coordinate domain 0~7
-- legal triangle x1=x3, y1<y2<y3
-- input sequence N/N+1/N+2
-- busy assertion at N+1 edge
-- asynchronous active-high reset
-- Candidate C bounded scan
-- y ascending
-- x ascending within each y
-- E12 / E23 cross-product formulation
-- no E31 datapath for Candidate C
-- signed arithmetic width discipline
-- po=1 means xo/yo valid
-- po=0 means xo/yo don't-care
-- current final scan -> IDLE working decision
-
-If any of these requires change, report:
-
-ARCHITECTURE CHANGE REQUIRED
-
-and do not silently modify the decision.
-
-
-IMPLEMENTATION / VERIFICATION REQUIREMENTS:
-
-This is an architecture review task.
-
-No RTL implementation is required.
-
-No simulation PASS may be claimed unless actual simulation evidence
-is available.
-
-No synthesis / STA / P&R result may be claimed unless actual evidence
-is available.
-
-The review must distinguish:
-
-CONFIRMED
-VERIFIED
+```text
 NOT VERIFIED
-PROPOSED
-UNKNOWN
-CONFLICT
-BLOCKED
+```
 
-Architecture reasoning alone must not be labelled VERIFIED.
+---
 
+# 25. Issue Escalation
 
-EXPECTED OUTPUTS:
+若 implementation 過程發現：
 
-Produce an Architecture Review Result containing at least:
+* Architecture contradiction
+* undefined timing
+* impossible state transition
+* arithmetic definition ambiguity
+* protocol contradiction
+* interface contradiction
 
-1. Architecture Review Status
-2. Specification Consistency
-3. Interface Consistency
-4. Timing / Cycle Consistency
-5. Reset Consistency
-6. Candidate C Consistency
-7. Arithmetic / Signedness Consistency
-8. Output Ordering Consistency
-9. Final Busy / IDLE Assessment
-10. RTL-to-Architecture Observations
-11. Open Architecture Issues
-12. Human Decision Required items
-13. Freeze Readiness Assessment
-14. Recommended next project action
+不得自行修改 Architecture。
 
-For every identified issue include:
+請以以下格式回報：
 
-- Issue
-- Severity
-- Source
-- Why it matters
-- Affected artifact
-- Required owner
-- Required decision
-- Status
+```text
+ISSUE ID:
+TITLE:
 
+SYMPTOM:
 
-REQUIRED EVIDENCE:
+FAILING STAGE:
 
-The task result must include:
+ROOT CAUSE:
 
-- Architecture artifact identity reviewed
-- Architecture candidate identity if available
-- Specification identity reviewed if available
-- RTL artifact identity inspected, if inspected
-- No invented formal version number
-- Review findings with traceability to source sections / decisions
-- Explicit list of unresolved issues
-- Explicit list of Human Decision Required items
-- Explicit statement whether Architecture is:
-  - NOT READY
-  - READY FOR HUMAN REVIEW
-  - READY FOR FREEZE CONSIDERATION
+AFFECTED ARCHITECTURE SECTION:
 
-If RTL was inspected, explicitly identify:
+RTL IMPACT:
 
-RTL artifact:
-triangle.v
+PROPOSED OPTIONS:
 
-RTL formal version / candidate:
-UNKNOWN, unless an actual documented identity is found.
+SIDE EFFECTS:
 
-Do not convert code inspection into functional verification evidence.
+RECOMMENDATION:
 
+STATUS:
+```
 
-EXIT CRITERIA:
+在 Project Manager / Architecture Owner 決定前，不得以 workaround 形式偷偷修改 frozen behavior。
 
-Task is COMPLETE only when:
+---
 
-1. Architecture review has been performed against available
-   authoritative artifacts.
-2. No known architecture conflict is silently left unresolved.
-3. All significant architecture ambiguities are explicitly listed.
-4. Human Decision Required items are explicitly identified.
-5. Freeze readiness is explicitly classified.
-6. Any RTL-to-Architecture mismatch found by inspection is recorded.
-7. No Architecture or RTL modification was performed.
+# 26. Task Completion Condition
 
+Task 1 完成條件：
 
-FAILURE / BLOCKING RULES:
+1. `triangle.v` 已完整產生。
+2. Top module/interface 完全符合 specification。
+3. Frozen FSM 已實作。
+4. Frozen datapath 已實作。
+5. Frozen arithmetic 已實作。
+6. Frozen column storage 已實作。
+7. `|dx|=1` shortcut 已實作。
+8. LOWER / UPPER tracer 已實作。
+9. Y2 clamp 已實作。
+10. x2 termination 已實作。
+11. registered output 已實作。
+12. busy / RELEASE protocol 已實作。
+13. asynchronous active-high reset 已實作。
+14. RTL 尚未經 simulation 時，明確標示 `NOT VERIFIED`。
+15. 任何 Architecture conflict 必須先回報，而不是自行修改。
 
-If Specification and Architecture conflict:
+---
 
-STOP and report CONFLICT.
+## 最終指令
 
-If required authoritative artifact is unavailable:
+**請現在直接開始實作 `triangle.v`。**
 
-report BLOCKED / NOT VERIFIED for the affected review item.
+不要重新設計 Architecture。
 
-If a decision requires Human / Project Owner approval:
+不要提出新的 Architecture。
 
-report:
+不要自行修改 Frozen Decision。
 
-HUMAN DECISION REQUIRED
+先完成 RTL implementation，再輸出：
 
-Do not approve it autonomously.
+1. `triangle.v`
+2. Implementation Report
+3. Architecture Compliance Checklist
+4. 若有問題，依 Issue Escalation 格式回報
 
-If current RTL cannot be reliably identified:
-
-do not invent a version or candidate identity.
-
-If review discovers that the current architecture requires a
-substantive change before implementation:
-
-report:
-
-ARCHITECTURE CHANGE REQUIRED
-
-
-FORBIDDEN ACTIONS:
-
-- No RTL modification.
-- No Architecture modification.
-- No baseline freeze.
-- No version invention.
-- No silent conflict resolution.
-- No implementation optimization.
-- No Candidate B implementation.
-- No verification PASS claim without evidence.
-- No synthesis / STA / P&R claim without evidence.
-- No Human approval simulation.
-- No assumption that an existing RTL candidate is verified merely
-  because it exists.
-
-
-HANDOFF REQUIREMENTS:
-
-Return the completed Architecture Review Result to AI-0 Project Manager.
-
-The handoff must explicitly state:
-
-SOURCE ROLE:
-AI-1 System Architect
-
-DESTINATION ROLE:
-AI-0 Project Manager
-
-SOURCE ARTIFACT:
-Architecture Review Result
-
-ARCHITECTURE STATUS:
-UNDER REVIEW / READY FOR HUMAN REVIEW / NOT READY
-
-CURRENT ARCHITECTURE CANDIDATE:
-Candidate C, unless the review finds a documented conflict
-
-RTL ARTIFACT INSPECTED:
-triangle.v, if actually inspected
-
-RTL VERSION / CANDIDATE:
-actual identifiable identity, otherwise UNKNOWN
-
-VERIFICATION STATUS:
-NOT VERIFIED unless actual evidence exists
-
-OPEN ISSUES:
-explicit list
-
-HUMAN DECISION REQUIRED:
-explicit list
-
-NEXT ACTION:
-one recommended next action for AI-0 to evaluate
-
-Do not modify any project baseline or frozen decision as part of
-this handoff.
-
-==================================================
-
-END TASK PROMPT
-
-==================================================
+這份 RTL 將在下一階段交由 **RTL Verification Engineer** 進行獨立驗證。
