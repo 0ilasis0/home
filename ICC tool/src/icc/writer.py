@@ -1,5 +1,6 @@
 import shutil
 import struct
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -9,40 +10,16 @@ from .models import VcgtTable
 from .parser import parse_profile_tags
 
 
-def _write_rebuilt_profile(output_path: Path, header_data: bytes, tag_records: list[tuple[bytes, bytes]]) -> None:
+@dataclass
+class DataElement:
     """
-    Private helper to calculate offsets, alignment paddings, rebuild the Tag Table,
-    update the Profile Size in the header, and write the final ICC binary.
+    Internal structure to decouple logical tags from physical binary data blocks.
+    Used to safely preserve shared tag payloads and 4-byte alignments.
     """
-    tag_count = len(tag_records)
-    tag_table_bytes = bytearray()
-    data_bytes = bytearray()
+    payload: bytes
+    original_offset: int = -1
+    new_offset: int = 0
 
-    current_offset = ICC_HEADER_SIZE + 4 + (tag_count * 12)
-
-    for sig_bytes, payload in tag_records:
-        size = len(payload)
-        tag_table_bytes += struct.pack(">4sII", sig_bytes, current_offset, size)
-
-        data_bytes += payload
-
-        # ICC 規範: Tag payload 必須 padding 至 4-byte boundary。
-        pad_len = (4 - (size % 4)) % 4
-        data_bytes += b"\x00" * pad_len
-        current_offset += size + pad_len
-
-    total_size = ICC_HEADER_SIZE + 4 + len(tag_table_bytes) + len(data_bytes)
-
-    new_header = bytearray(header_data)
-    new_header[0:4] = struct.pack(">I", total_size)
-
-    final_binary = new_header + struct.pack(">I", tag_count) + tag_table_bytes + data_bytes
-
-    try:
-        with output_path.open("wb") as f:
-            f.write(final_binary)
-    except OSError as e:
-        raise ProfileWriteError(f"Failed to write output profile: {e}") from e
 
 def serialize_vcgt(table: VcgtTable) -> bytes:
     """
@@ -66,31 +43,25 @@ def serialize_vcgt(table: VcgtTable) -> bytes:
 
     return header + red_bytes + green_bytes + blue_bytes
 
-def add_or_replace_vcgt(input_path: Path, output_path: Path, table: VcgtTable) -> None:
+
+def _rebuild_profile_safely(
+    input_path: Path,
+    output_path: Path,
+    new_vcgt_bytes: Optional[bytes],
+    tags_to_delete: set[str]
+) -> None:
     """
-    Creates a new ICC Profile by adding or replacing the vcgt tag of the input profile.
-    Maintains existing tags and ICC structural alignments.
+    Core engine for ICC profile rebuilding.
+    - Decouples Tag Table Entries from physical Data Elements.
+    - Accurately preserves original shared Data Element relationships.
+    - Enforces 4-byte alignments for all output payload offsets.
     """
-    if not input_path.exists():
-        raise ProfileWriteError(f"Input file does not exist: {input_path}")
-
-    if input_path.resolve() == output_path.resolve():
-        raise ProfileWriteError("Input and output paths must not be the same to prevent data corruption.")
-
-    # 精確捕捉 Vcgt 序列化錯誤，不使用寬鬆的 except Exception
-    try:
-        new_vcgt_bytes = serialize_vcgt(table)
-    except InvalidVcgtError as e:
-        raise ProfileWriteError(f"Failed to serialize VcgtTable: {e}") from e
-
-    # 精確捕捉 Profile 解析錯誤
     try:
         tags = parse_profile_tags(input_path)
     except ProfileError as e:
         raise ProfileWriteError(f"Failed to parse input profile: {e}") from e
 
-    tag_records = []
-    vcgt_replaced = False
+    original_elements: dict[tuple[int, int], DataElement] = {}
 
     try:
         with input_path.open("rb") as f:
@@ -99,75 +70,94 @@ def add_or_replace_vcgt(input_path: Path, output_path: Path, table: VcgtTable) -
                 raise ProfileWriteError("Input profile header is too short.")
 
             for tag in tags:
-                sig_bytes = tag.signature.encode("ascii")
-                if sig_bytes == b"vcgt":
-                    if vcgt_replaced:
-                        # 拒絕靜默忽略，若原始檔案帶有多個 vcgt 則明確拋出錯誤
-                        raise ProfileWriteError("Input profile contains duplicate 'vcgt' tags.")
-                    tag_records.append((sig_bytes, new_vcgt_bytes))
-                    vcgt_replaced = True
-                else:
+                key = (tag.offset, tag.size)
+                if key not in original_elements:
                     f.seek(tag.offset)
                     data = f.read(tag.size)
-                    tag_records.append((sig_bytes, data))
+
+                    # [FIX] 確保實際讀取到的位元組長度等於標籤宣告的長度
+                    if len(data) != tag.size:
+                        raise ProfileWriteError(
+                            f"File truncated while reading tag payload at offset {tag.offset} "
+                            f"(expected {tag.size}, got {len(data)})."
+                        )
+
+                    original_elements[key] = DataElement(payload=data, original_offset=tag.offset)
     except OSError as e:
         raise ProfileWriteError(f"Failed to read input profile payloads: {e}") from e
 
-    # 若原檔案中不存在 vcgt，則附加在標籤紀錄最後
-    if not vcgt_replaced:
-        tag_records.append((b"vcgt", new_vcgt_bytes))
-
-    # 統一調用共用重建寫入方法，負責計算 Offset、Padding Alignment 與 Profile Size
-    _write_rebuilt_profile(output_path, header_data, tag_records)
-
-def delete_tags(input_path: Path, output_path: Path, signatures: set[str]) -> None:
-    """
-    Removes the specified tags from the ICC profile and writes the result to a new file.
-    Non-deleted tags and their original payloads are fully preserved.
-    """
-    if not input_path.exists():
-        raise ProfileWriteError(f"Input file does not exist: {input_path}")
-
-    if input_path.resolve() == output_path.resolve():
-        raise ProfileWriteError("Input and output paths must not be the same to prevent data corruption.")
-
-    for sig in signatures:
-        if not isinstance(sig, str) or len(sig) != 4 or not sig.isascii():
-            raise ProfileWriteError(f"Invalid signature '{sig}': must be exactly 4 ASCII characters.")
-
-    try:
-        tags = parse_profile_tags(input_path)
-    except ProfileError as e:
-        raise ProfileWriteError(f"Failed to parse input profile: {e}") from e
-
-    tag_records = []
+    logical_tags: list[tuple[bytes, DataElement]] = []
     vcgt_seen = False
+    new_vcgt_element = DataElement(payload=new_vcgt_bytes) if new_vcgt_bytes else None
+
+    # 分配邏輯標籤
+    for tag in tags:
+        if tag.signature == "vcgt":
+            if vcgt_seen:
+                raise ProfileWriteError("Input profile contains duplicate 'vcgt' tags.")
+            vcgt_seen = True
+
+            if new_vcgt_bytes is not None:
+                logical_tags.append((b"vcgt", new_vcgt_element))
+            elif "vcgt" not in tags_to_delete:
+                key = (tag.offset, tag.size)
+                logical_tags.append((b"vcgt", original_elements[key]))
+        else:
+            if tag.signature not in tags_to_delete:
+                key = (tag.offset, tag.size)
+                sig_bytes = tag.signature.encode("ascii")
+                logical_tags.append((sig_bytes, original_elements[key]))
+
+    # 若原本沒有 vcgt 但需要寫入，附加在最後
+    if new_vcgt_bytes is not None and not vcgt_seen:
+        logical_tags.append((b"vcgt", new_vcgt_element))
+
+    # 過濾出需要實際寫入檔案的實體資料區塊 (根據記憶體位置 id 來過濾，保留共享特性)
+    unique_elements = []
+    seen_ids = set()
+    for _, elem in logical_tags:
+        if id(elem) not in seen_ids:
+            seen_ids.add(id(elem))
+            unique_elements.append(elem)
+
+    # 確保原本的實體資料順序盡量不變，新附加的資料排在最後
+    unique_elements.sort(key=lambda e: e.original_offset if e.original_offset != -1 else float('inf'))
+
+    tag_count = len(logical_tags)
+    # 計算起始 Offset：Header(128) + Tag Count(4) + (Count * 12)
+    current_offset = ICC_HEADER_SIZE + 4 + (tag_count * 12)
+    data_bytes = bytearray()
+
+    # 計算並寫入各個實體資料塊，強制對齊 4-byte 邊界
+    for elem in unique_elements:
+        align_pad = (4 - (current_offset % 4)) % 4
+        if align_pad > 0:
+            data_bytes += b"\x00" * align_pad
+            current_offset += align_pad
+
+        elem.new_offset = current_offset
+        data_bytes += elem.payload
+        current_offset += len(elem.payload)
+
+    # 建立 Tag Table 指標 (將邏輯標籤對應回更新後的實體位址)
+    tag_table_bytes = bytearray()
+    for sig_bytes, elem in logical_tags:
+        tag_table_bytes += struct.pack(">4sII", sig_bytes, elem.new_offset, len(elem.payload))
+
+    # 重算 Profile 總長度並更新 Header
+    total_size = ICC_HEADER_SIZE + 4 + len(tag_table_bytes) + len(data_bytes)
+    new_header = bytearray(header_data)
+    new_header[0:4] = struct.pack(">I", total_size)
+
+    # 組裝最終的 ICC Binary
+    final_binary = new_header + struct.pack(">I", tag_count) + tag_table_bytes + data_bytes
 
     try:
-        with input_path.open("rb") as f:
-            header_data = f.read(ICC_HEADER_SIZE)
-            if len(header_data) < ICC_HEADER_SIZE:
-                raise ProfileWriteError("Input profile header is too short.")
-
-            for tag in tags:
-                if tag.signature == "vcgt":
-                    if vcgt_seen:
-                        raise ProfileWriteError("Input profile contains duplicate 'vcgt' tags.")
-                    vcgt_seen = True
-
-                # 若標籤名列入刪除清單，則跳過，不寫入新的 tag_records
-                if tag.signature in signatures:
-                    continue
-
-                sig_bytes = tag.signature.encode("ascii")
-                f.seek(tag.offset)
-                data = f.read(tag.size)
-                tag_records.append((sig_bytes, data))
+        with output_path.open("wb") as f:
+            f.write(final_binary)
     except OSError as e:
-        raise ProfileWriteError(f"Failed to read input profile payloads: {e}") from e
+        raise ProfileWriteError(f"Failed to write output profile: {e}") from e
 
-    # 統一調用共用重建寫入方法
-    _write_rebuilt_profile(output_path, header_data, tag_records)
 
 def save_profile(
     input_path: Path,
@@ -175,20 +165,20 @@ def save_profile(
     vcgt_table: Optional[VcgtTable] = None,
     tags_to_delete: Optional[set[str]] = None
 ) -> None:
-    """
-    Saves the ICC profile state. Commits pending tag deletions and/or vcgt modifications.
-    Untouched tags (including vcgt if not modified) are preserved byte-for-byte.
-    If no modifications are requested, performs a byte-for-byte no-op copy.
-    """
     if tags_to_delete is None:
         tags_to_delete = set()
+
+    # [FIX] 恢復 TASK-005 要求：嚴格驗證 tags_to_delete 的 signature 合法性
+    for sig in tags_to_delete:
+        if not isinstance(sig, str) or len(sig) != 4 or not sig.isascii():
+            raise ProfileWriteError(f"Invalid signature '{sig}': must be exactly 4 ASCII characters.")
 
     if not input_path.exists():
         raise ProfileWriteError(f"Input file does not exist: {input_path}")
     if input_path.resolve() == output_path.resolve():
         raise ProfileWriteError("Input and output paths must not be the same to prevent data corruption.")
 
-    # [No-op Save]: 若未做任何修改，直接 byte-for-byte 複製原檔
+    # No-op save optimization: Byte-for-byte 完美複製
     if vcgt_table is None and not tags_to_delete:
         try:
             shutil.copy2(input_path, output_path)
@@ -197,61 +187,29 @@ def save_profile(
         return
 
     try:
-        tags = parse_profile_tags(input_path)
-    except ProfileError as e:
-        raise ProfileWriteError(f"Failed to parse input profile: {e}") from e
+        new_vcgt_bytes = serialize_vcgt(vcgt_table) if vcgt_table else None
+    except InvalidVcgtError as e:
+        raise ProfileWriteError(f"Failed to serialize VcgtTable: {e}") from e
 
-    new_vcgt_bytes = None
-    if vcgt_table is not None:
-        try:
-            new_vcgt_bytes = serialize_vcgt(vcgt_table)
-        except InvalidVcgtError as e:
-            raise ProfileWriteError(f"Failed to serialize VcgtTable: {e}") from e
+    # 委派至新的安全重建引擎
+    _rebuild_profile_safely(input_path, output_path, new_vcgt_bytes, tags_to_delete)
 
-    tag_records = []
-    vcgt_seen = False
 
-    try:
-        with input_path.open("rb") as f:
-            header_data = f.read(ICC_HEADER_SIZE)
-            if len(header_data) < ICC_HEADER_SIZE:
-                raise ProfileWriteError("Input profile header is too short.")
+# ==========================================
+# Legacy API Bridges (For backward compatibility)
+# ==========================================
 
-            for tag in tags:
-                if tag.signature == "vcgt":
-                    if vcgt_seen:
-                        raise ProfileWriteError("Input profile contains duplicate 'vcgt' tags.")
-                    vcgt_seen = True
+def add_or_replace_vcgt(input_path: Path, output_path: Path, table: VcgtTable) -> None:
+    """
+    Creates a new ICC Profile by adding or replacing the vcgt tag.
+    (Legacy API: Routes to save_profile)
+    """
+    save_profile(input_path, output_path, vcgt_table=table)
 
-                    if new_vcgt_bytes is not None:
-                        # Modified explicitly, use new bytes
-                        tag_records.append((b"vcgt", new_vcgt_bytes))
-                        continue
-                    elif "vcgt" in tags_to_delete:
-                        # Explicitly deleted
-                        continue
-                    else:
-                        # Untouched vcgt preservation
-                        sig_bytes = tag.signature.encode("ascii")
-                        f.seek(tag.offset)
-                        data = f.read(tag.size)
-                        tag_records.append((sig_bytes, data))
-                        continue
 
-                # 處理一般標籤刪除
-                if tag.signature in tags_to_delete:
-                    continue
-
-                # Untouched 一般標籤 preservation
-                sig_bytes = tag.signature.encode("ascii")
-                f.seek(tag.offset)
-                data = f.read(tag.size)
-                tag_records.append((sig_bytes, data))
-    except OSError as e:
-        raise ProfileWriteError(f"Failed to read input profile payloads: {e}") from e
-
-    # 若原先沒有 vcgt，但本次編輯加入了 vcgt_table，則附加於尾端
-    if new_vcgt_bytes is not None and not vcgt_seen:
-        tag_records.append((b"vcgt", new_vcgt_bytes))
-
-    _write_rebuilt_profile(output_path, header_data, tag_records)
+def delete_tags(input_path: Path, output_path: Path, signatures: set[str]) -> None:
+    """
+    Removes the specified tags from the ICC profile and writes the result to a new file.
+    (Legacy API: Routes to save_profile)
+    """
+    save_profile(input_path, output_path, tags_to_delete=signatures)

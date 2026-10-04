@@ -5,8 +5,7 @@ from typing import Optional
 
 from .errors import ProfileError
 from .models import VcgtTable
-from .service import (ProfileView, import_vcgt_txt, load_profile, read_vcgt,
-                      save_profile)
+from .service import ProfileView, import_vcgt_txt, load_profile, save_profile
 
 
 class IccTagEditorApp:
@@ -137,13 +136,36 @@ class IccTagEditorApp:
         if not self.input_profile:
             messagebox.showwarning("Warning", "Please load a profile first.")
             return
+
         try:
-            table = read_vcgt(self.input_profile)
-            msg = (f"vcgt Payload Parsed Successfully!\n\n"
-                   f"Channels: 3 (RGB)\n"
-                   f"Entries per channel: {len(table.red)}\n"
-                   f"Entry Size: 16-bit")
-            messagebox.showinfo("vcgt Information", msg)
+            import json
+
+            from .service import read_vcgt_dict
+
+            inspection_data = read_vcgt_dict(self.input_profile)
+            # 使用 json 達成結構化的漂亮排版，自動保留插入順序與階層縮排
+            formatted_text = json.dumps(inspection_data, indent=4)
+
+            # 開啟獨立唯讀視窗 (Scrollable read-only text window)
+            top = tk.Toplevel(self.root)
+            top.title(f"vcgt Binary Inspection - {self.input_profile.name}")
+            top.geometry("600x600")
+
+            text_frame = ttk.Frame(top)
+            text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+            text_area = tk.Text(text_frame, wrap="none", font=("Courier", 10))
+            scrollbar_y = ttk.Scrollbar(text_frame, orient="vertical", command=text_area.yview)
+            scrollbar_x = ttk.Scrollbar(text_frame, orient="horizontal", command=text_area.xview)
+            text_area.configure(yscrollcommand=scrollbar_y.set, xscrollcommand=scrollbar_x.set)
+
+            scrollbar_y.pack(side=tk.RIGHT, fill=tk.Y)
+            scrollbar_x.pack(side=tk.BOTTOM, fill=tk.X)
+            text_area.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+            text_area.insert(tk.END, formatted_text)
+            text_area.configure(state="disabled") # 鎖定為 Read-only
+
         except ProfileError as e:
             messagebox.showerror("Read Error", str(e))
 

@@ -6,7 +6,7 @@ from .errors import ProfileError
 from .models import TagInfo, VcgtTable
 from .parser import parse_profile_tags, read_tag_payload
 from .txt_vcgt import parse_vcgt_txt
-from .vcgt import parse_vcgt
+from .vcgt import inspect_vcgt, parse_vcgt
 from .writer import add_or_replace_vcgt, delete_tags
 from .writer import save_profile as writer_save_profile
 
@@ -33,22 +33,6 @@ def load_profile(profile_path: Path) -> ProfileView:
         tags=tags_tuple,
         has_vcgt=has_vcgt
     )
-
-
-def read_vcgt(profile_path: Path) -> VcgtTable:
-    """
-    Locates and parses the 'vcgt' payload from the given profile.
-    Raises ProfileError if the tag is missing.
-    """
-    tags = parse_profile_tags(profile_path)
-    vcgt_tag = next((tag for tag in tags if tag.signature == "vcgt"), None)
-
-    if vcgt_tag is None:
-        raise ProfileError(f"No 'vcgt' tag found in profile: {profile_path}")
-
-    payload = read_tag_payload(profile_path, vcgt_tag)
-    return parse_vcgt(payload)
-
 
 def import_vcgt_txt(txt_path: Path) -> VcgtTable:
     """
@@ -86,3 +70,17 @@ def save_profile(
     If no modifications are requested, performs a byte-for-byte no-op copy.
     """
     writer_save_profile(input_profile, output_profile, vcgt_table, tags_to_delete)
+
+def read_vcgt_dict(profile_path: Path) -> dict[str, object]:
+    """
+    Locates and parses the 'vcgt' payload into a hex-formatted inspection dictionary.
+    Raises ProfileError if the tag is missing.
+    """
+    tags = parse_profile_tags(profile_path)
+    vcgt_tag = next((tag for tag in tags if tag.signature == "vcgt"), None)
+
+    if vcgt_tag is None:
+        raise ProfileError(f"No 'vcgt' tag found in profile: {profile_path}")
+
+    payload = read_tag_payload(profile_path, vcgt_tag)
+    return inspect_vcgt(payload)
