@@ -1,0 +1,20 @@
+1. 絕對可以安全刪除的附加資料（強烈建議刪除）
+這類標籤多為 ArgyllCMS / DisplayCAL 私有的紀錄或文字描述，對作業系統的色彩管理核心運作完全沒有幫助：   targ、DevD、CIED：這些記錄了校色時量測的色塊原始數據，佔用空間不小（各 23,219 Bytes），可以直接刪除。   meta：DisplayCAL 用來記錄產生此 ICC 時的軟體環境與參數（XML 格式，2,308 Bytes），可刪除。   dmnd、dmdd、mmod：螢幕製造商與型號的文字簽名。   arts：ArgyllCMS 的私有標籤。   lumi、bkpt、chrm：絕對亮度、黑點與色度座標，這屬於進階輔助資訊，一般 OS 轉換時非強制需要。  
+ 
+2. 體積最大，刪除後會降級為「矩陣校色檔」的 3D LUT 資料A2B0、A2B1、B2A1、B2A0：這些是為了支援高精度色彩轉換所建立的 3D 查找表，佔據了檔案絕大部分的體積（每個高達 227KB 到 241KB 不等）。   如果您精簡檔案的唯一目的是「讓螢幕全域套用 VCGT（灰階與色溫校正）」，您可以把這些巨大的 3D LUT 全部刪除。刪除後檔案會從約 1MB 縮水到僅剩幾 KB，而支援色彩管理的軟體（如 Photoshop、Chrome）會自動退回使用檔案中保留的基礎矩陣（Matrix）模式來渲染顏色。   
+
+3. 絕對不能刪除的核心與基礎標籤（必留清單）
+若要確保 Windows 不會把這個 ICC 視為「結構不合法或無效檔案」，除了 vcgt 外，您還必須保留以下標籤：   desc：內部設定檔名稱，Windows 色彩管理辨識與登錄檔快取的核心標籤。   cprt：版權宣告，ICC 規範中明訂為「必須存在的強制標籤」，即便無內容也不能拔除，否則檔案會被 OS 判為損壞。   wtpt：媒體白點（White Point），ICC 規範強制要求存在的基礎標籤。   rXYZ、gXYZ、bXYZ（色彩原色矩陣）與 rTRC、gTRC、bTRC（色調對應曲線）：這是螢幕 ICC 最基礎的色彩定義資料，佔用極小（各只有 20 Bytes 與 524 Bytes）。若您刪除了上述的 3D LUT，作業系統就完全必須依賴這 6 個標籤來正確顯示顏色，千萬不能刪除。   
+
+
+
+可以刪
+targ、DevD、CIED、meta、dmnd、dmdd、mmod、arts、lumi、bkpt、chrm
+
+刪除後會降級為「矩陣校色檔」
+A2B0、A2B1、B2A1、B2A0
+
+不可以刪除
+desc、cprt、wtpt、
+rXYZ、gXYZ、bXYZ、
+rTRC、gTRC、bTRC
