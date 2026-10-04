@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 from .errors import ProfileError
 from .models import TagInfo, VcgtTable
@@ -7,6 +8,7 @@ from .parser import parse_profile_tags, read_tag_payload
 from .txt_vcgt import parse_vcgt_txt
 from .vcgt import parse_vcgt
 from .writer import add_or_replace_vcgt, delete_tags
+from .writer import save_profile as writer_save_profile
 
 
 @dataclass(frozen=True)
@@ -58,6 +60,7 @@ def import_vcgt_txt(txt_path: Path) -> VcgtTable:
 def save_vcgt(input_profile: Path, output_profile: Path, table: VcgtTable) -> None:
     """
     Delegates to the ICC writer to add or replace the vcgt tag in a profile.
+    (Legacy API, preserved for backward compatibility in tests)
     """
     add_or_replace_vcgt(input_profile, output_profile, table)
 
@@ -65,5 +68,21 @@ def save_vcgt(input_profile: Path, output_profile: Path, table: VcgtTable) -> No
 def delete_profile_tags(input_profile: Path, output_profile: Path, signatures: set[str]) -> None:
     """
     Delegates to the ICC writer to remove the specified tags from a profile.
+    (Legacy API, preserved for backward compatibility in tests)
     """
     delete_tags(input_profile, output_profile, signatures)
+
+
+def save_profile(
+    input_profile: Path,
+    output_profile: Path,
+    vcgt_table: Optional[VcgtTable] = None,
+    tags_to_delete: Optional[set[str]] = None
+) -> None:
+    """
+    Delegates to the ICC writer to save the ICC profile state.
+    Commits pending tag deletions and/or vcgt modifications.
+    Untouched tags (including vcgt if not modified) are preserved byte-for-byte.
+    If no modifications are requested, performs a byte-for-byte no-op copy.
+    """
+    writer_save_profile(input_profile, output_profile, vcgt_table, tags_to_delete)

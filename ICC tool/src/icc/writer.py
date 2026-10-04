@@ -1,5 +1,7 @@
+import shutil
 import struct
 from pathlib import Path
+from typing import Optional
 
 from .constants import ICC_HEADER_SIZE
 from .errors import InvalidVcgtError, ProfileError, ProfileWriteError
@@ -165,4 +167,91 @@ def delete_tags(input_path: Path, output_path: Path, signatures: set[str]) -> No
         raise ProfileWriteError(f"Failed to read input profile payloads: {e}") from e
 
     # 統一調用共用重建寫入方法
+    _write_rebuilt_profile(output_path, header_data, tag_records)
+
+def save_profile(
+    input_path: Path,
+    output_path: Path,
+    vcgt_table: Optional[VcgtTable] = None,
+    tags_to_delete: Optional[set[str]] = None
+) -> None:
+    """
+    Saves the ICC profile state. Commits pending tag deletions and/or vcgt modifications.
+    Untouched tags (including vcgt if not modified) are preserved byte-for-byte.
+    If no modifications are requested, performs a byte-for-byte no-op copy.
+    """
+    if tags_to_delete is None:
+        tags_to_delete = set()
+
+    if not input_path.exists():
+        raise ProfileWriteError(f"Input file does not exist: {input_path}")
+    if input_path.resolve() == output_path.resolve():
+        raise ProfileWriteError("Input and output paths must not be the same to prevent data corruption.")
+
+    # [No-op Save]: 若未做任何修改，直接 byte-for-byte 複製原檔
+    if vcgt_table is None and not tags_to_delete:
+        try:
+            shutil.copy2(input_path, output_path)
+        except OSError as e:
+            raise ProfileWriteError(f"Failed to copy profile: {e}") from e
+        return
+
+    try:
+        tags = parse_profile_tags(input_path)
+    except ProfileError as e:
+        raise ProfileWriteError(f"Failed to parse input profile: {e}") from e
+
+    new_vcgt_bytes = None
+    if vcgt_table is not None:
+        try:
+            new_vcgt_bytes = serialize_vcgt(vcgt_table)
+        except InvalidVcgtError as e:
+            raise ProfileWriteError(f"Failed to serialize VcgtTable: {e}") from e
+
+    tag_records = []
+    vcgt_seen = False
+
+    try:
+        with input_path.open("rb") as f:
+            header_data = f.read(ICC_HEADER_SIZE)
+            if len(header_data) < ICC_HEADER_SIZE:
+                raise ProfileWriteError("Input profile header is too short.")
+
+            for tag in tags:
+                if tag.signature == "vcgt":
+                    if vcgt_seen:
+                        raise ProfileWriteError("Input profile contains duplicate 'vcgt' tags.")
+                    vcgt_seen = True
+
+                    if new_vcgt_bytes is not None:
+                        # Modified explicitly, use new bytes
+                        tag_records.append((b"vcgt", new_vcgt_bytes))
+                        continue
+                    elif "vcgt" in tags_to_delete:
+                        # Explicitly deleted
+                        continue
+                    else:
+                        # Untouched vcgt preservation
+                        sig_bytes = tag.signature.encode("ascii")
+                        f.seek(tag.offset)
+                        data = f.read(tag.size)
+                        tag_records.append((sig_bytes, data))
+                        continue
+
+                # 處理一般標籤刪除
+                if tag.signature in tags_to_delete:
+                    continue
+
+                # Untouched 一般標籤 preservation
+                sig_bytes = tag.signature.encode("ascii")
+                f.seek(tag.offset)
+                data = f.read(tag.size)
+                tag_records.append((sig_bytes, data))
+    except OSError as e:
+        raise ProfileWriteError(f"Failed to read input profile payloads: {e}") from e
+
+    # 若原先沒有 vcgt，但本次編輯加入了 vcgt_table，則附加於尾端
+    if new_vcgt_bytes is not None and not vcgt_seen:
+        tag_records.append((b"vcgt", new_vcgt_bytes))
+
     _write_rebuilt_profile(output_path, header_data, tag_records)
