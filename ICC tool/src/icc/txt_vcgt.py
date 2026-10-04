@@ -5,6 +5,44 @@ from .errors import InvalidVcgtTxtError, ProfileError
 from .models import VcgtTable
 
 
+def serialize_vcgt_txt(table: VcgtTable) -> str:
+    """
+    Serializes a VcgtTable into a C-style BYTE array TXT format.
+    Each 16-bit channel entry is converted to a Little-Endian pair of bytes (0xXX).
+    Outputs strictly 256 uint16 entries (512 bytes) per channel.
+    """
+    if len(table.red) != 256 or len(table.green) != 256 or len(table.blue) != 256:
+        raise ValueError("VcgtTable channels must have exactly 256 entries.")
+
+    lines = []
+    channels = [("R", table.red), ("G", table.green), ("B", table.blue)]
+
+    for name, data in channels:
+        # [FIX] 使用字串連接替代 f-string 的 {{ 跳脫，避免語法解析錯誤
+        lines.append("BYTE vcgt_" + name + "[] = {")
+
+        hex_bytes = []
+        for val in data:
+            # 強制 Little-Endian 轉換：先 low byte，再 high byte
+            low = val & 0xFF
+            high = (val >> 8) & 0xFF
+            hex_bytes.append(f"0x{low:02X}")
+            hex_bytes.append(f"0x{high:02X}")
+
+        # 每 16 個 bytes (8 個 uint16) 換行，增加可讀性
+        for i in range(0, len(hex_bytes), 16):
+            chunk = hex_bytes[i:i+16]
+            is_last_chunk = (i + 16 >= len(hex_bytes))
+            line_content = ", ".join(chunk)
+            if not is_last_chunk:
+                line_content += ","
+            lines.append("    " + line_content)
+
+        lines.append("};")
+        lines.append("")
+
+    return "\n".join(lines).strip()
+
 def parse_vcgt_txt(path: Path) -> VcgtTable:
     """
     Parses a C-style BYTE array TXT file containing Red, Green, and Blue vcgt LUTs.
