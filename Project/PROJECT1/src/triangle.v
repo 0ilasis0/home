@@ -1,6 +1,6 @@
-// RTL Version: 1.2.0
-// RTL Baseline ID: RTL-BASE-A1-TASK1-OPTIMIZED
-// RTL Commit/Revision: MULTI-CANDIDATE-OPTIMIZATION (A, B, C, D)
+// RTL Version: 1.2.1
+// RTL Baseline ID: RTL-BASE-A1-TASK1-OPTIMIZED-BUGFIX
+// RTL Commit/Revision: BUG-RTL-002-FIXED (Stale registered direction fix)
 `timescale 1ns/1ps
 
 module triangle (
@@ -181,7 +181,7 @@ module triangle (
 
             x1 <= 3'd0; y1 <= 3'd0;
             x2 <= 3'd0; y2 <= 3'd0;
-            y3 <= 3'd0;
+            y3 <= 3'd0; // Candidate D: x3 removed
 
             dx <= 4'sd0; dy12 <= 4'sd0; dy32 <= 4'sd0; s <= 4'sd0;
             x_trace <= 4'sd0; y_trace <= 4'sd0; E_trace <= 4'sd0;
@@ -212,7 +212,7 @@ module triangle (
                 end
 
                 CAPTURE_P3: begin
-                    y3 <= yi;
+                    y3 <= yi; // Candidate D: x3 capture removed
                 end
 
                 INIT_COLUMN: begin
@@ -230,9 +230,9 @@ module triangle (
                     yup[x2]  <= y2;
 
                     if (abs_dx == 3'd1) begin
-                        // Candidate A: For y1, x1 is always the valid starting point.
-                        // Prevents read-before-write hazard on ylow[] RAM.
-                        x_scan <= (s == -4'sd1) ? x1 : x_left;
+                        // BUG-RTL-002 FIXED: Stale 's' value bypass.
+                        // For |dx|=1, x1 is always the only valid column at y1.
+                        x_scan <= x1;
                         y_scan <= y1;
                         scan_done <= 1'b0;
                     end
