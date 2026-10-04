@@ -1,10 +1,12 @@
 class ProfileError(Exception): pass
 class InvalidProfileError(ProfileError): pass
+class InvalidVcgtError(ProfileError): pass
+class UnsupportedVcgtError(ProfileError): pass
 
-class InvalidVcgtError(ProfileError):
-    """Raised when the vcgt payload is malformed."""
+class InvalidVcgtTxtError(ProfileError):
+    """Raised when the TXT vcgt payload is malformed or invalid."""
     pass
 
-class UnsupportedVcgtError(ProfileError):
-    """Raised when the vcgt payload uses unsupported features (e.g., Formula Type)."""
+class ProfileWriteError(ProfileError):
+    """Raised when an error occurs while writing or modifying an ICC profile."""
     pass
