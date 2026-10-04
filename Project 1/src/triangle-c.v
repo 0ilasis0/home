@@ -1,7 +1,4 @@
-// RTL Version: 1.1.0
-// RTL Baseline ID: RTL-BASE-A1-TASK1-BUGFIX-2
-// RTL Commit/Revision: ARCH-CHANGE-OUTPUT-SCAN-EARLY-EXIT
-`timescale 1ns/1ps
+`timescale 100ps/10ps
 
 module triangle (
     input  wire       clk,
@@ -15,9 +12,6 @@ module triangle (
     output reg  [2:0] yo
 );
 
-    // =========================================================================
-    // FSM State Definitions (Architecture Section 26 & 27)
-    // =========================================================================
     localparam [3:0]
         IDLE        = 4'd0,
         CAPTURE_P2  = 4'd1,
@@ -68,9 +62,6 @@ module triangle (
     // Normalized inside condition: sE >= 0 (Section 14)
     wire trace_inside = (s == 4'sd1) ? (E_trace >= 9'sd0) : (E_trace <= 9'sd0);
 
-    // ARCH-CHANGE-OUTPUT-SCAN-EARLY-EXIT: Output scan candidate evaluation
-    wire current_inside = (ylow[x_scan] <= y_scan) && (y_scan <= yup[x_scan]);
-
     // =========================================================================
     // Combinational Next-State Logic
     // =========================================================================
@@ -88,10 +79,7 @@ module triangle (
                 next_state = INIT_COLUMN;
             end
             INIT_COLUMN: begin
-                if (abs_dx == 3'd1)
-                    next_state = OUTPUT_SCAN; // |dx|=1 shortcut
-                else
-                    next_state = LOWER_INIT;
+                next_state = LOWER_INIT;
             end
 
             // --- LOWER TRACER ---
@@ -103,11 +91,13 @@ module triangle (
                     if (x_trace + s == $signed({1'b0, x2}))
                         next_state = UPPER_INIT;
                 end else begin
+                    // Outside Y2 Clamp Check
                     if (y_trace + 4'sd1 == $signed({1'b0, y2}))
                         next_state = LOWER_CLAMP;
                 end
             end
             LOWER_CLAMP: begin
+                // Fixed in First Fix: Correct termination condition
                 if (x_trace == $signed({1'b0, x2}))
                     next_state = UPPER_INIT;
             end
@@ -121,11 +111,13 @@ module triangle (
                     if (x_trace + s == $signed({1'b0, x2}))
                         next_state = OUTPUT_SCAN;
                 end else begin
+                    // Outside Y2 Clamp Check
                     if (y_trace - 4'sd1 == $signed({1'b0, y2}))
                         next_state = UPPER_CLAMP;
                 end
             end
             UPPER_CLAMP: begin
+                // Fixed in First Fix: Correct termination condition
                 if (x_trace == $signed({1'b0, x2}))
                     next_state = OUTPUT_SCAN;
             end
@@ -202,11 +194,6 @@ module triangle (
                     ylow[x2] <= y2;
                     yup[x2]  <= y2;
 
-                    if (abs_dx == 3'd1) begin
-                        x_scan <= (x1 < x2) ? x1 : x2;
-                        y_scan <= y1;
-                        scan_done <= 1'b0;
-                    end
                 end
 
                 // --- LOWER TRACER ---
@@ -233,6 +220,9 @@ module triangle (
                     end
                 end
                 LOWER_CLAMP: begin
+                    // BUG-RTL-001 SECOND FIX: Terminate based on x_trace == x2
+                    // Do NOT write x2 column (already initialized in INIT_COLUMN)
+                    // Do NOT advance x_trace past x2
                     if (x_trace != $signed({1'b0, x2})) begin
                         ylow[x_trace[2:0]] <= y2;
                         x_trace <= x_trace + s;
@@ -267,10 +257,12 @@ module triangle (
                     end
                 end
                 UPPER_CLAMP: begin
+                    // BUG-RTL-001 SECOND FIX: Terminate based on x_trace == x2
                     if (x_trace != $signed({1'b0, x2})) begin
                         yup[x_trace[2:0]] <= y2;
                         x_trace <= x_trace + s;
                     end else begin
+                        // Initialize scanner properly upon terminating UPPER_CLAMP
                         x_scan <= x_left;
                         y_scan <= y1;
                         scan_done <= 1'b0;
@@ -282,13 +274,11 @@ module triangle (
                     if (scan_done) begin
                         po <= 1'b0;
                     end else begin
-                        // ARCH-CHANGE-OUTPUT-SCAN-EARLY-EXIT
-                        po <= current_inside;
+                        po <= (ylow[x_scan] <= y_scan) && (y_scan <= yup[x_scan]);
                         xo <= x_scan;
                         yo <= y_scan;
 
-                        if (!current_inside && (s == 4'sd1)) begin
-                            // Early exit for x2 > x1
+                        if (x_scan == x_right) begin
                             if (y_scan == y3) begin
                                 scan_done <= 1'b1;
                             end else begin
@@ -296,17 +286,7 @@ module triangle (
                                 y_scan <= y_scan + 3'd1;
                             end
                         end else begin
-                            // Normal scan progression for x2 < x1 or trailing inside points
-                            if (x_scan == x_right) begin
-                                if (y_scan == y3) begin
-                                    scan_done <= 1'b1;
-                                end else begin
-                                    x_scan <= x_left;
-                                    y_scan <= y_scan + 3'd1;
-                                end
-                            end else begin
-                                x_scan <= x_scan + 3'd1;
-                            end
+                            x_scan <= x_scan + 3'd1;
                         end
                     end
                 end

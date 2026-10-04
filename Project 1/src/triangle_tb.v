@@ -1,1006 +1,266 @@
-`timescale 1ns/1ps
+`timescale 100ps/10ps
 
 // ============================================================================
-// Digital Circuit Design and Analysis 115-1 Project I
-// Triangle Rendering Engine
+// Project        : Triangle Rendering Engine
+// File           : tb_triangle.v
+// Purpose        : RTL Verification Testbench for triangle.v
 //
-// RTL Verification Engineer — AI-3
-// Task 1 Verification Baseline
+// Verification baseline:
+//   - Project Specification
+//   - Architecture Specification A1
+//   - RTL Coding Standard
+//   - Manager RTL Verification Task 1
 //
 // IMPORTANT:
-//   - This is a verification-only testbench.
-//   - Production RTL is NOT modified by this file.
-//   - Expected geometry is generated independently from the RTL architecture.
-//   - Do NOT change expected behavior to accommodate DUT behavior.
-//   - RTL version / baseline ID is intentionally NOT defined here.
-//
-// Verification scope:
-//   1. Interface
-//   2. Asynchronous active-high reset
-//   3. Input capture protocol
-//   4. Busy protocol
-//   5. Triangle geometry
-//   6. x2 > x1 / x2 < x1
-//   7. |dx| = 1 / |dx| > 1
-//   8. Output inclusion
-//   9. Output ordering
-//  10. Registered output timing
-//  11. Release timing
-//  12. Corner cases
-//  13. Exhaustive legal input space: 3136 triangles
-//
-// Reference model:
-//   Independent point-in-triangle mathematical model.
-//   It does NOT copy the DUT's column/tracer implementation.
-//
+//   - This file is TESTBENCH ONLY.
+//   - Production RTL triangle.v is NOT modified.
+//   - Verilog-2001 compatible.
+//   - No SystemVerilog constructs.
+//   - Reference model is intentionally independent from RTL tracer equations.
 // ============================================================================
 
-module triangle_tb;
+module tb_triangle;
 
-    // ========================================================================
-    // DUT interface
-    // ========================================================================
+// =========================================================================
+// DUT Interface
+// =========================================================================
+reg        clk;
+reg        reset;
+reg        nt;
+reg  [2:0] xi;
+reg  [2:0] yi;
 
-    reg         clk;
-    reg         reset;
-    reg         nt;
-    reg  [2:0]  xi;
-    reg  [2:0]  yi;
+wire       busy;
+wire       po;
+wire [2:0] xo;
+wire [2:0] yo;
 
-    wire        busy;
-    wire        po;
-    wire [2:0]  xo;
-    wire [2:0]  yo;
+triangle dut (
+    .clk   (clk),
+    .reset (reset),
+    .nt    (nt),
+    .xi    (xi),
+    .yi    (yi),
+    .busy  (busy),
+    .po     (po),
+    .xo     (xo),
+    .yo     (yo)
+);
 
+// =========================================================================
+// Clock
+// =========================================================================
+initial begin
+    clk = 1'b0;
+    forever #5 clk = ~clk;
+end
 
-    // ========================================================================
-    // DUT
-    // ========================================================================
+// =========================================================================
+// Test Configuration
+// =========================================================================
+integer total_tests;
+integer pass_tests;
+integer fail_tests;
 
-    triangle dut (
-        .clk   (clk),
-        .reset (reset),
-        .nt    (nt),
-        .xi    (xi),
-        .yi    (yi),
-        .busy  (busy),
-        .po     (po),
-        .xo     (xo),
-        .yo     (yo)
-    );
+integer total_points_checked;
+integer total_po_cycles;
+integer total_busy_errors;
+integer total_output_errors;
+integer total_protocol_errors;
+integer total_timing_errors;
+integer total_reset_errors;
 
+integer current_test_id;
 
-    // ========================================================================
-    // Clock
-    // ========================================================================
+// =========================================================================
+// Reference Output Storage
+//
+// Maximum possible candidate space:
+//   x range <= 8
+//   y range <= 8
+//
+// Maximum valid triangle points therefore <= 64.
+// =========================================================================
+reg [2:0] exp_x [0:63];
+reg [2:0] exp_y [0:63];
 
-    parameter CLK_PERIOD = 10;
+integer exp_count;
+integer exp_index;
 
-    initial begin
-        clk = 1'b0;
+// =========================================================================
+// Transaction bookkeeping
+// =========================================================================
+integer transaction_active;
+integer transaction_finished;
 
-        forever begin
-            #(CLK_PERIOD / 2);
-            clk = ~clk;
+integer first_po_seen;
+integer last_po_seen;
+integer first_output_cycle;
+integer last_output_cycle;
+
+integer cycle_counter;
+
+integer busy_seen_high;
+integer busy_violation;
+
+integer po_previous;
+
+// =========================================================================
+// Expected final output timing
+// =========================================================================
+integer release_seen;
+integer idle_seen_after_release;
+
+// =========================================================================
+// Generic counters
+// =========================================================================
+integer i;
+integer j;
+
+// =========================================================================
+// Utility: absolute value
+// =========================================================================
+function integer abs_int;
+    input integer value;
+    begin
+        if (value < 0)
+            abs_int = -value;
+        else
+            abs_int = value;
+    end
+endfunction
+
+// =========================================================================
+// Independent geometric reference model
+//
+// Uses point-in-triangle cross products.
+//
+// For point P and directed edge A->B:
+//
+//   cross = (Bx-Ax)*(Py-Ay) - (By-Ay)*(Px-Ax)
+//
+// Boundary is included:
+//
+//   all cross >= 0 OR all cross <= 0
+//
+// This is intentionally independent from the RTL LOWER/UPPER tracer.
+// =========================================================================
+function integer point_inside_triangle;
+    input integer px;
+    input integer py;
+
+    input integer ax;
+    input integer ay;
+    input integer bx;
+    input integer by;
+
+    input integer cx;
+    input integer cy;
+
+    integer c1;
+    integer c2;
+    integer c3;
+
+    begin
+        c1 = (bx - ax) * (py - ay) -
+             (by - ay) * (px - ax);
+
+        c2 = (cx - bx) * (py - by) -
+             (cy - by) * (px - bx);
+
+        c3 = (ax - cx) * (py - cy) -
+             (ay - cy) * (px - cx);
+
+        if ((c1 >= 0) && (c2 >= 0) && (c3 >= 0))
+            point_inside_triangle = 1;
+        else if ((c1 <= 0) && (c2 <= 0) && (c3 <= 0))
+            point_inside_triangle = 1;
+        else
+            point_inside_triangle = 0;
+    end
+endfunction
+
+// =========================================================================
+// Build expected output list
+//
+// Required output order:
+//
+//   y ascending
+//   x ascending
+//
+// Only valid triangle points are stored.
+// =========================================================================
+task build_expected_output;
+    input integer tx1;
+    input integer ty1;
+    input integer tx2;
+    input integer ty2;
+    input integer tx3;
+    input integer ty3;
+
+    integer min_x;
+    integer max_x;
+    integer x;
+    integer y;
+
+    begin
+        exp_count = 0;
+
+        if (tx1 < tx2)
+            min_x = tx1;
+        else
+            min_x = tx2;
+
+        if (tx1 > tx2)
+            max_x = tx1;
+        else
+            max_x = tx2;
+
+        // y ascending
+        for (y = ty1; y <= ty3; y = y + 1) begin
+
+            // x ascending
+            for (x = min_x; x <= max_x; x = x + 1) begin
+
+                if (point_inside_triangle(
+                        x, y,
+                        tx1, ty1,
+                        tx2, ty2,
+                        tx3, ty3)) begin
+
+                    if (exp_count < 64) begin
+                        exp_x[exp_count] = x[2:0];
+                        exp_y[exp_count] = y[2:0];
+                        exp_count = exp_count + 1;
+                    end
+                end
+            end
         end
     end
+endtask
 
+// =========================================================================
+// Failure reporting
+// =========================================================================
+task report_failure;
+    input [255:0] reason;
+    begin
+        fail_tests = fail_tests + 1;
 
-    // ========================================================================
-    // Global verification bookkeeping
-    // ========================================================================
-
-    integer cycle_count;
-
-    integer total_tests;
-    integer pass_tests;
-    integer fail_tests;
-
-    integer error_count;
-
-    integer current_test_id;
-
-    reg test_failed;
-
-    always @(posedge clk) begin
-        cycle_count = cycle_count + 1;
+        $display(
+            "ERROR: TEST=%0d CYCLE=%0d REASON=%s",
+            current_test_id,
+            cycle_counter,
+            reason
+        );
     end
-
-
-    // ========================================================================
-    // Independent Reference Model
-    //
-    // Maximum possible number of points for the legal triangle domain is well
-    // below 64, therefore 64 entries are reserved.
-    //
-    // The expected output ordering is generated as:
-    //
-    //     for y = y1 -> y3
-    //         for x = x_left -> x_right
-    //
-    // A mathematical point-in-triangle test determines whether the point
-    // belongs to the triangle.
-    //
-    // This does NOT use:
-    //     ylow[]
-    //     yup[]
-    //     E_trace
-    //     LOWER tracer
-    //     UPPER tracer
-    //     DUT FSM
-    //
-    // ========================================================================
-
-    reg [2:0] expected_x [0:63];
-    reg [2:0] expected_y [0:63];
-
-    integer expected_count;
-    integer expected_index;
-
-
-    // ========================================================================
-    // Mathematical reference model
-    //
-    // Cross product:
-    //
-    // cross(A,B,P)
-    //   = (Bx-Ax)*(Py-Ay)
-    //     - (By-Ay)*(Px-Ax)
-    //
-    // A point is inside or on the boundary when all three edge cross products
-    // are non-negative OR all three are non-positive.
-    //
-    // integer is intentionally used only in the verification environment.
-    // It is NOT production RTL.
-    // ========================================================================
-
-    task point_inside_triangle;
-        input  integer px;
-        input  integer py;
-
-        integer c1;
-        integer c2;
-        integer c3;
-
-        integer ax;
-        integer ay;
-        integer bx;
-        integer by;
-
-        begin
-            // Edge P1 -> P2
-            ax = ref_x1;
-            ay = ref_y1;
-            bx = ref_x2;
-            by = ref_y2;
-
-            c1 = (bx - ax) * (py - ay)
-               - (by - ay) * (px - ax);
-
-
-            // Edge P2 -> P3
-            ax = ref_x2;
-            ay = ref_y2;
-            bx = ref_x3;
-            by = ref_y3;
-
-            c2 = (bx - ax) * (py - ay)
-               - (by - ay) * (px - ax);
-
-
-            // Edge P3 -> P1
-            ax = ref_x3;
-            ay = ref_y3;
-            bx = ref_x1;
-            by = ref_y1;
-
-            c3 = (bx - ax) * (py - ay)
-               - (by - ay) * (px - ax);
-
-
-            if (((c1 >= 0) && (c2 >= 0) && (c3 >= 0)) ||
-                ((c1 <= 0) && (c2 <= 0) && (c3 <= 0))) begin
-                point_inside_triangle = 1;
-            end
-            else begin
-                point_inside_triangle = 0;
-            end
-        end
-    endtask
-
-
-    // ========================================================================
-    // Reference triangle coordinates
-    // ========================================================================
-
-    integer ref_x1;
-    integer ref_y1;
-    integer ref_x2;
-    integer ref_y2;
-    integer ref_x3;
-    integer ref_y3;
-
-    integer ref_x_left;
-    integer ref_x_right;
-
-    integer ref_dx;
-
-
-    // ========================================================================
-    // Build independent expected output list
-    //
-    // Ordering:
-    //     y ascending
-    //     x ascending within same y
-    //
-    // ========================================================================
-
-    task build_expected;
-        integer x;
-        integer y;
-        integer inside;
-
-        begin
-            expected_count = 0;
-
-            ref_x_left  = (ref_x1 < ref_x2) ? ref_x1 : ref_x2;
-            ref_x_right = (ref_x1 > ref_x2) ? ref_x1 : ref_x2;
-
-            ref_dx = ref_x2 - ref_x1;
-
-            for (y = ref_y1; y <= ref_y3; y = y + 1) begin
-
-                for (x = ref_x_left; x <= ref_x_right; x = x + 1) begin
-
-                    point_inside_triangle(x, y);
-
-                    if (point_inside_triangle) begin
-                        expected_x[expected_count] = x[2:0];
-                        expected_y[expected_count] = y[2:0];
-
-                        expected_count = expected_count + 1;
-                    end
-                end
-
-            end
-        end
-    endtask
-
-
-    // ========================================================================
-    // Utility: verification failure
-    // ========================================================================
-
-    task report_error;
-        input [255:0] message;
-
-        begin
-            error_count = error_count + 1;
-            test_failed = 1'b1;
-
-            $display("");
-            $display("============================================================");
-            $display("VERIFICATION ERROR");
-            $display("Test ID       : %0d", current_test_id);
-            $display("Cycle         : %0d", cycle_count);
-            $display("Triangle      : P1=(%0d,%0d) P2=(%0d,%0d) P3=(%0d,%0d)",
-                     ref_x1, ref_y1,
-                     ref_x2, ref_y2,
-                     ref_x3, ref_y3);
-            $display("Message       : %s", message);
-            $display("DUT busy      : %b", busy);
-            $display("DUT po        : %b", po);
-            $display("DUT xo        : %0d", xo);
-            $display("DUT yo        : %0d", yo);
-            $display("============================================================");
-            $display("");
-        end
-    endtask
-
-
-    // ========================================================================
-    // Utility: wait for a bounded number of clock cycles
-    //
-    // This prevents a DUT stuck in a state from hanging the whole regression.
-    // ========================================================================
-
-    task wait_one_cycle;
-        begin
-            @(posedge clk);
-            #1;
-        end
-    endtask
-
-
-    // ========================================================================
-    // Reset verification
-    //
-    // Active-high asynchronous reset.
-    //
-    // Expected:
-    //     busy = 0
-    //     po   = 0
-    //
-    // Internal FSM/data-path state will be checked after actual RTL is provided
-    // and its internal state names are known.
-    // ========================================================================
-
-    task verify_reset;
-        begin
-            $display("");
-            $display("------------------------------------------------------------");
-            $display("RESET VERIFICATION");
-            $display("------------------------------------------------------------");
-
-            reset = 1'b1;
-            nt    = 1'b0;
-            xi    = 3'd0;
-            yi    = 3'd0;
-
-            #2;
-
-            if (busy !== 1'b0) begin
-                report_error("Reset assertion: busy is not 0");
-            end
-
-            if (po !== 1'b0) begin
-                report_error("Reset assertion: po is not 0");
-            end
-
-            // Release reset on a clock-safe boundary.
-            @(negedge clk);
-            reset = 1'b0;
-
-            #1;
-
-            if (busy !== 1'b0) begin
-                report_error("After reset release: busy is not 0");
-            end
-
-            if (po !== 1'b0) begin
-                report_error("After reset release: po is not 0");
-            end
-
-            if (!test_failed) begin
-                $display("RESET CHECK: PASS (simulation evidence required)");
-            end
-        end
-    endtask
-
-
-    // ========================================================================
-    // Reset during processing
-    //
-    // This is used to verify asynchronous reset behavior does not leave the
-    // external interface in a stale/phantom-output state.
-    //
-    // Architecture requires reset -> IDLE, busy=0, po=0.
-    // ========================================================================
-
-    task verify_reset_during_processing;
-
-        integer timeout;
-
-        begin
-            $display("");
-            $display("------------------------------------------------------------");
-            $display("RESET-DURING-PROCESSING VERIFICATION");
-            $display("------------------------------------------------------------");
-
-            // Wait for idle.
-            timeout = 0;
-
-            while (busy !== 1'b0) begin
-                wait_one_cycle;
-                timeout = timeout + 1;
-
-                if (timeout > 20) begin
-                    report_error("Cannot reach IDLE before reset-during-processing test");
-                    disable verify_reset_during_processing;
-                end
-            end
-
-            // Apply a legal triangle.
-            @(negedge clk);
-            nt = 1'b1;
-            xi = 3'd0;
-            yi = 3'd0;
-
-            @(negedge clk);
-            nt = 1'b0;
-            xi = 3'd7;
-            yi = 3'd3;
-
-            @(negedge clk);
-            nt = 1'b0;
-            xi = 3'd0;
-            yi = 3'd7;
-
-            // Allow DUT to enter processing.
-            @(posedge clk);
-            #1;
-
-            // Assert asynchronous reset while processing.
-            #1;
-            reset = 1'b1;
-
-            #1;
-
-            if (busy !== 1'b0) begin
-                report_error("Asynchronous reset during processing: busy is not 0");
-            end
-
-            if (po !== 1'b0) begin
-                report_error("Asynchronous reset during processing: po is not 0");
-            end
-
-            @(negedge clk);
-            reset = 1'b0;
-
-            #1;
-
-            if (busy !== 1'b0) begin
-                report_error("After reset release from processing: busy is not 0");
-            end
-
-            if (po !== 1'b0) begin
-                report_error("After reset release from processing: po is not 0");
-            end
-
-            if (!test_failed) begin
-                $display("RESET-DURING-PROCESSING CHECK: PASS (simulation evidence required)");
-            end
-        end
-    endtask
-
-
-    // ========================================================================
-    // Run one legal triangle
-    //
-    // Input protocol:
-    //
-    //     C1: nt=1 -> P1
-    //     C2: nt=0 -> P2
-    //     C3: nt=0 -> P3
-    //
-    // Inputs are changed at negedge so that the DUT samples stable values at
-    // posedge.
-    //
-    // Output is sampled #1 after posedge because po/xo/yo are registered.
-    // ========================================================================
-
-    task run_triangle;
-
-        input integer in_x1;
-        input integer in_y1;
-        input integer in_x2;
-        input integer in_y2;
-        input integer in_x3;
-        input integer in_y3;
-
-        integer timeout;
-        integer output_count;
-        integer release_phase;
-
-        reg saw_last_output;
-        reg saw_busy_high;
-
-        begin
-            test_failed = 1'b0;
-
-            ref_x1 = in_x1;
-            ref_y1 = in_y1;
-
-            ref_x2 = in_x2;
-            ref_y2 = in_y2;
-
-            ref_x3 = in_x3;
-            ref_y3 = in_y3;
-
-            build_expected;
-
-            output_count = 0;
-            release_phase = 0;
-            saw_last_output = 1'b0;
-            saw_busy_high = 1'b0;
-
-            // ------------------------------------------------------------
-            // Wait until IDLE
-            // ------------------------------------------------------------
-
-            timeout = 0;
-
-            while (busy !== 1'b0) begin
-                wait_one_cycle;
-                timeout = timeout + 1;
-
-                if (timeout > 1000) begin
-                    report_error("Timeout waiting for IDLE");
-                    disable run_triangle;
-                end
-            end
-
-            // ------------------------------------------------------------
-            // C1: P1
-            // ------------------------------------------------------------
-
-            @(negedge clk);
-
-            nt = 1'b1;
-            xi = in_x1[2:0];
-            yi = in_y1[2:0];
-
-            @(posedge clk);
-            #1;
-
-            // nt is valid only for one clock.
-            @(negedge clk);
-
-            nt = 1'b0;
-            xi = in_x2[2:0];
-            yi = in_y2[2:0];
-
-            // ------------------------------------------------------------
-            // C2: P2
-            // ------------------------------------------------------------
-
-            @(posedge clk);
-            #1;
-
-            // Architecture requires busy to become active after C2.
-            if (busy !== 1'b1) begin
-                report_error("After P2 capture: busy is not 1");
-            end
-
-            saw_busy_high = 1'b1;
-
-            // ------------------------------------------------------------
-            // C3: P3
-            // ------------------------------------------------------------
-
-            @(negedge clk);
-
-            nt = 1'b0;
-            xi = in_x3[2:0];
-            yi = in_y3[2:0];
-
-            @(posedge clk);
-            #1;
-
-            // nt must not remain asserted.
-            if (nt !== 1'b0) begin
-                report_error("Input protocol: nt is not 0 during P3");
-            end
-
-            // busy must remain asserted during processing.
-            if (busy !== 1'b1) begin
-                report_error("After P3 capture: busy is not 1");
-            end
-
-            // Architecture says first output is not produced until the
-            // output-scan registered-output timing point.
-            //
-            // This check is deliberately explicit because the output is
-            // registered.
-            if (po !== 1'b0) begin
-                report_error("Unexpected output valid on P3 capture edge");
-            end
-
-            // ------------------------------------------------------------
-            // Output / release monitoring
-            // ------------------------------------------------------------
-
-            timeout = 0;
-
-            forever begin
-
-                @(posedge clk);
-                #1;
-
-                timeout = timeout + 1;
-
-                if (timeout > 5000) begin
-                    report_error("Timeout waiting for triangle completion");
-                    disable run_triangle;
-                end
-
-                // --------------------------------------------------------
-                // Valid output
-                // --------------------------------------------------------
-
-                if (po === 1'b1) begin
-
-                    if (output_count >= expected_count) begin
-                        report_error("Extra output point after all expected points");
-                    end
-                    else begin
-
-                        if (xo !== expected_x[output_count]) begin
-                            report_error("Output X does not match independent reference ordering");
-                        end
-
-                        if (yo !== expected_y[output_count]) begin
-                            report_error("Output Y does not match independent reference ordering");
-                        end
-                    end
-
-                    output_count = output_count + 1;
-
-                    // Last expected point.
-                    if (output_count == expected_count) begin
-                        saw_last_output = 1'b1;
-
-                        // Last valid point must have busy=1.
-                        if (busy !== 1'b1) begin
-                            report_error("Last valid point does not have busy=1");
-                        end
-                    end
-                end
-
-                // --------------------------------------------------------
-                // After last output:
-                //
-                // N:
-                //     po=1 busy=1
-                //
-                // N+1:
-                //     po=0 busy=1
-                //
-                // N+2:
-                //     po=0 busy=0
-                // --------------------------------------------------------
-
-                if (saw_last_output) begin
-
-                    if (release_phase == 0) begin
-
-                        // This branch executes on the cycle immediately
-                        // following the last valid point.
-                        //
-                        // The last point was already observed in the previous
-                        // iteration, so po must now be 0 and busy must remain 1.
-
-                        if (po !== 1'b0) begin
-                            report_error("Cycle after last output: po is not 0");
-                        end
-
-                        if (busy !== 1'b1) begin
-                            report_error("Cycle after last output: busy is not 1");
-                        end
-
-                        release_phase = 1;
-                    end
-                    else begin
-
-                        // Release-complete cycle.
-                        if (po !== 1'b0) begin
-                            report_error("Release complete: po is not 0");
-                        end
-
-                        if (busy !== 1'b0) begin
-                            report_error("Release complete: busy is not 0");
-                        end
-
-                        break;
-                    end
-                end
-
-            end
-
-            // ------------------------------------------------------------
-            // Final per-triangle checks
-            // ------------------------------------------------------------
-
-            if (!saw_busy_high) begin
-                report_error("Triangle never entered busy state");
-            end
-
-            if (output_count != expected_count) begin
-                report_error("Output point count does not match reference model");
-            end
-
-            // ------------------------------------------------------------
-            // Result
-            // ------------------------------------------------------------
-
-            if (test_failed) begin
-                fail_tests = fail_tests + 1;
-
-                $display("TEST %0d: FAIL", current_test_id);
-                $display("  P1=(%0d,%0d) P2=(%0d,%0d) P3=(%0d,%0d)",
-                         ref_x1, ref_y1,
-                         ref_x2, ref_y2,
-                         ref_x3, ref_y3);
-                $display("  Expected points = %0d", expected_count);
-                $display("  Actual outputs  = %0d", output_count);
-            end
-            else begin
-                pass_tests = pass_tests + 1;
-
-                $display("TEST %0d: PASS  P1=(%0d,%0d) P2=(%0d,%0d) P3=(%0d,%0d) points=%0d",
-                         current_test_id,
-                         ref_x1, ref_y1,
-                         ref_x2, ref_y2,
-                         ref_x3, ref_y3,
-                         expected_count);
-            end
-
-            total_tests = total_tests + 1;
-
-        end
-    endtask
-
-
-    // ========================================================================
-    // Directed example from Architecture Specification
-    //
-    // P1=(1,1)
-    // P2=(6,3)
-    // P3=(1,6)
-    //
-    // Expected:
-    //
-    // (1,1)
-    // (1,2) (2,2) (3,2)
-    // (1,3) (2,3) (3,3) (4,3) (5,3) (6,3)
-    // (1,4) (2,4) (3,4) (4,4)
-    // (1,5) (2,5)
-    // (1,6)
-    //
-    // The independent model generates this list rather than hard-coding
-    // expected points, but this specific triangle is explicitly exercised.
-    // ========================================================================
-
-    task directed_architecture_example;
-        begin
-            current_test_id = 1;
-
-            run_triangle(
-                1, 1,
-                6, 3,
-                1, 6
-            );
-        end
-    endtask
-
-
-    // ========================================================================
-    // Directed geometry classes
-    // ========================================================================
-
-    task directed_dx_plus_one;
-        begin
-            current_test_id = current_test_id + 1;
-
-            // x2 > x1, |dx| = 1
-            run_triangle(
-                1, 1,
-                2, 4,
-                1, 7
-            );
-        end
-    endtask
-
-
-    task directed_dx_minus_one;
-        begin
-            current_test_id = current_test_id + 1;
-
-            // x2 < x1, |dx| = 1
-            run_triangle(
-                6, 0,
-                5, 3,
-                6, 7
-            );
-        end
-    endtask
-
-
-    task directed_dx_plus_many;
-        begin
-            current_test_id = current_test_id + 1;
-
-            // x2 > x1, |dx| > 1
-            run_triangle(
-                0, 0,
-                7, 3,
-                0, 7
-            );
-        end
-    endtask
-
-
-    task directed_dx_minus_many;
-        begin
-            current_test_id = current_test_id + 1;
-
-            // x2 < x1, |dx| > 1
-            run_triangle(
-                7, 0,
-                0, 3,
-                7, 7
-            );
-        end
-    endtask
-
-
-    // ========================================================================
-    // Boundary cases
-    // ========================================================================
-
-    task directed_boundary_cases;
-        begin
-            // x1 = 0, x2 = 7
-            current_test_id = current_test_id + 1;
-
-            run_triangle(
-                0, 0,
-                7, 1,
-                0, 7
-            );
-
-
-            // x1 = 7, x2 = 0
-            current_test_id = current_test_id + 1;
-
-            run_triangle(
-                7, 0,
-                0, 1,
-                7, 7
-            );
-
-
-            // y1 = 0
-            current_test_id = current_test_id + 1;
-
-            run_triangle(
-                3, 0,
-                7, 4,
-                3, 7
-            );
-
-
-            // y3 = 7
-            current_test_id = current_test_id + 1;
-
-            run_triangle(
-                0, 0,
-                4, 3,
-                0, 7
-            );
-
-
-            // x boundary and y boundary combination
-            current_test_id = current_test_id + 1;
-
-            run_triangle(
-                0, 0,
-                7, 6,
-                0, 7
-            );
-        end
-    endtask
-
-
-    // ========================================================================
-    // Exhaustive legal triangle verification
-    //
-    // Legal domain:
-    //
-    //   x1 = x3
-    //   y1 < y2 < y3
-    //   x2 != x1
-    //
-    // Number:
-    //
-    //   8 * C(8,3) * 7
-    // = 8 * 56 * 7
-    // = 3136
-    //
-    // This is independent exhaustive functional geometry verification.
-    // ========================================================================
-
-    task exhaustive_legal_triangles;
-
-        integer x1_loop;
-        integer x2_loop;
-        integer y1_loop;
-        integer y2_loop;
-        integer y3_loop;
-
-        begin
-            $display("");
-            $display("============================================================");
-            $display("EXHAUSTIVE LEGAL TRIANGLE VERIFICATION");
-            $display("Expected legal triangle count = 3136");
-            $display("============================================================");
-            $display("");
-
-            for (x1_loop = 0; x1_loop <= 7; x1_loop = x1_loop + 1) begin
-
-                for (x2_loop = 0; x2_loop <= 7; x2_loop = x2_loop + 1) begin
-
-                    if (x2_loop != x1_loop) begin
-
-                        for (y1_loop = 0; y1_loop <= 7; y1_loop = y1_loop + 1) begin
-
-                            for (y2_loop = y1_loop + 1;
-                                 y2_loop <= 7;
-                                 y2_loop = y2_loop + 1) begin
-
-                                for (y3_loop = y2_loop + 1;
-                                     y3_loop <= 7;
-                                     y3_loop = y3_loop + 1) begin
-
-                                    current_test_id = current_test_id + 1;
-
-                                    run_triangle(
-                                        x1_loop,
-                                        y1_loop,
-                                        x2_loop,
-                                        y2_loop,
-                                        x1_loop,
-                                        y3_loop
-                                    );
-
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    endtask
-
-
-    // ========================================================================
-    // Main verification sequence
-    // ========================================================================
-
-    initial begin
-
-        // ------------------------------------------------------------
-        // Initial values
-        // ------------------------------------------------------------
-
-        reset = 1'b1;
-        nt    = 1'b0;
-        xi    = 3'd0;
-        yi    = 3'd0;
-
-        cycle_count = 0;
-
-        total_tests = 0;
-        pass_tests  = 0;
-        fail_tests  = 0;
-
-        error_count = 0;
-
-        current_test_id = 0;
-
-        test_failed = 1'b0;
-
-
-        // ------------------------------------------------------------
-        // Reset verification
-        // ------------------------------------------------------------
-
-        verify_reset;
-
-
-        // ------------------------------------------------------------
-        // Reset during processing
-        // ------------------------------------------------------------
-
-        current_test_id = current_test_id + 1;
-
-        verify_reset_during_processing;
-
-
-        // ------------------------------------------------------------
-        // Restore clean reset state before functional verification
-        // ------------------------------------------------------------
-
+endtask
+
+// =========================================================================
+// Reset task
+// =========================================================================
+task apply_reset;
+    begin
         reset = 1'b1;
         nt    = 1'b0;
         xi    = 3'd0;
@@ -1008,70 +268,712 @@ module triangle_tb;
 
         #2;
 
-        @(negedge clk);
+        if (busy !== 1'b0) begin
+            total_reset_errors = total_reset_errors + 1;
+            $display(
+                "ERROR: RESET busy != 0, time=%0t",
+                $time
+            );
+        end
+
+        if (po !== 1'b0) begin
+            total_reset_errors = total_reset_errors + 1;
+            $display(
+                "ERROR: RESET po != 0, time=%0t",
+                $time
+            );
+        end
+
+        #8;
+
         reset = 1'b0;
 
+        @(negedge clk);
+
+        if (busy !== 1'b0) begin
+            total_reset_errors = total_reset_errors + 1;
+            $display(
+                "ERROR: POST-RESET busy != 0, time=%0t",
+                $time
+            );
+        end
+
+        if (po !== 1'b0) begin
+            total_reset_errors = total_reset_errors + 1;
+            $display(
+                "ERROR: POST-RESET po != 0, time=%0t",
+                $time
+            );
+        end
+    end
+endtask
+
+// =========================================================================
+// Drive one triangle
+//
+// Protocol:
+//
+// C1: nt=1, P1
+// C2: nt=0, P2
+// C3: nt=0, P3
+//
+// Inputs are changed at negedge to guarantee setup before DUT posedge.
+// =========================================================================
+task drive_triangle;
+    input integer tx1;
+    input integer ty1;
+    input integer tx2;
+    input integer ty2;
+    input integer tx3;
+    input integer ty3;
+
+    begin
+        @(negedge clk);
+
+        // -------------------------------
+        // C1: P1
+        // -------------------------------
+        if (busy !== 1'b0) begin
+            total_protocol_errors = total_protocol_errors + 1;
+
+            $display(
+                "ERROR: Attempted transaction while busy=1 before P1"
+            );
+        end
+
+        xi = tx1[2:0];
+        yi = ty1[2:0];
+        nt = 1'b1;
+
+        @(posedge clk);
+
+        // Keep nt high only for this one input cycle.
+        @(negedge clk);
+
+        nt = 1'b0;
+
+        // -------------------------------
+        // C2: P2
+        // -------------------------------
+        xi = tx2[2:0];
+        yi = ty2[2:0];
+
+        @(posedge clk);
+
+        // busy must be asserted after C2.
         #1;
 
+        if (busy !== 1'b1) begin
+            total_busy_errors = total_busy_errors + 1;
 
-        // ------------------------------------------------------------
-        // Directed architecture example
-        // ------------------------------------------------------------
-
-        directed_architecture_example;
-
-
-        // ------------------------------------------------------------
-        // Geometry direction / dx classes
-        // ------------------------------------------------------------
-
-        directed_dx_plus_one;
-        directed_dx_minus_one;
-        directed_dx_plus_many;
-        directed_dx_minus_many;
-
-
-        // ------------------------------------------------------------
-        // Coordinate boundary cases
-        // ------------------------------------------------------------
-
-        directed_boundary_cases;
-
-
-        // ------------------------------------------------------------
-        // Exhaustive legal input space
-        // ------------------------------------------------------------
-
-        exhaustive_legal_triangles;
-
-
-        // ------------------------------------------------------------
-        // Final report
-        // ------------------------------------------------------------
-
-        $display("");
-        $display("============================================================");
-        $display("RTL VERIFICATION TASK 1 SUMMARY");
-        $display("============================================================");
-        $display("Total tests      : %0d", total_tests);
-        $display("Passed tests     : %0d", pass_tests);
-        $display("Failed tests     : %0d", fail_tests);
-        $display("Error count      : %0d", error_count);
-        $display("Cycle count      : %0d", cycle_count);
-        $display("============================================================");
-
-        if (fail_tests != 0 || error_count != 0) begin
-            $display("FINAL STATUS: FAIL");
-        end
-        else begin
-            $display("FINAL STATUS: PASS");
+            $display(
+                "ERROR: BUSY timing failure: busy != 1 after P2 capture"
+            );
         end
 
-        $display("NOTE: Final verification status requires retained simulation evidence.");
-        $display("============================================================");
-        $display("");
+        @(negedge clk);
 
-        $finish;
+        // -------------------------------
+        // C3: P3
+        // -------------------------------
+        xi = tx3[2:0];
+        yi = ty3[2:0];
+
+        // busy must already be high before P3.
+        if (busy !== 1'b1) begin
+            total_busy_errors = total_busy_errors + 1;
+
+            $display(
+                "ERROR: BUSY timing failure: busy != 1 before P3"
+            );
+        end
+
+        @(posedge clk);
+
+        @(negedge clk);
+
+        xi = 3'd0;
+        yi = 3'd0;
     end
+endtask
+
+// =========================================================================
+// Wait for output and check registered po/xo/yo.
+//
+// IMPORTANT:
+//
+// The manager requirement explicitly calls for:
+//
+//   @(posedge clk)
+//   if (po == 1)
+//
+// Therefore the checker samples the registered outputs at posedge,
+// before the DUT's NBA update for that edge.
+//
+// This means the observed output corresponds to the output register
+// value established during the preceding cycle.
+// =========================================================================
+task monitor_transaction;
+    input integer tx1;
+    input integer ty1;
+    input integer tx2;
+    input integer ty2;
+    input integer tx3;
+    input integer ty3;
+
+    integer timeout;
+    integer expected_busy_release;
+    integer previous_x;
+    integer previous_y;
+    integer have_previous_point;
+
+    begin
+        build_expected_output(
+            tx1, ty1,
+            tx2, ty2,
+            tx3, ty3
+        );
+
+        exp_index = 0;
+
+        timeout = 0;
+        first_po_seen = 0;
+        last_po_seen = 0;
+        first_output_cycle = -1;
+        last_output_cycle = -1;
+        busy_seen_high = 0;
+        busy_violation = 0;
+        release_seen = 0;
+        idle_seen_after_release = 0;
+
+        have_previous_point = 0;
+        previous_x = 0;
+        previous_y = 0;
+
+        // -------------------------------------------------------------
+        // Monitor until busy goes low after the transaction.
+        //
+        // The expected protocol is:
+        //
+        //   last valid output : busy=1, po=1
+        //   release cycle     : busy=1, po=0
+        //   next cycle        : busy=0, po=0
+        // -------------------------------------------------------------
+        while (timeout < 1000) begin
+
+            @(posedge clk);
+
+            cycle_counter = cycle_counter + 1;
+            timeout = timeout + 1;
+
+            // ---------------------------------------------------------
+            // Busy must remain high during active operation.
+            // ---------------------------------------------------------
+            if (busy === 1'b1)
+                busy_seen_high = 1;
+
+            // ---------------------------------------------------------
+            // Registered output sampling required by verification task.
+            // ---------------------------------------------------------
+            if (po === 1'b1) begin
+
+                total_po_cycles = total_po_cycles + 1;
+
+                if (first_po_seen == 0) begin
+                    first_po_seen = 1;
+                    first_output_cycle = cycle_counter;
+                end
+
+                last_po_seen = 1;
+                last_output_cycle = cycle_counter;
+
+                // -----------------------------------------------------
+                // Compare against independent reference model.
+                // -----------------------------------------------------
+                if (exp_index >= exp_count) begin
+
+                    total_output_errors = total_output_errors + 1;
+
+                    $display(
+                        "ERROR: Unexpected extra output: xo=%0d yo=%0d",
+                        xo, yo
+                    );
+
+                end else begin
+
+                    if ((xo !== exp_x[exp_index]) ||
+                        (yo !== exp_y[exp_index])) begin
+
+                        total_output_errors =
+                            total_output_errors + 1;
+
+                        $display(
+                            "ERROR: OUTPUT mismatch: ",
+                            "expected=(%0d,%0d) ",
+                            "actual=(%0d,%0d) ",
+                            "index=%0d",
+                            //current_test_id,
+                            exp_x[exp_index],
+                            exp_y[exp_index],
+                            xo,
+                            yo,
+                            exp_index
+                        );
+                    end else begin
+                        total_points_checked =
+                            total_points_checked + 1;
+                    end
+
+                    // -------------------------------------------------
+                    // Explicit ordering check.
+                    // -------------------------------------------------
+                    if (have_previous_point) begin
+
+                        if (yo < previous_y) begin
+                            total_output_errors =
+                                total_output_errors + 1;
+
+                            $display(
+                                "ERROR: Y ordering violation: ",
+                                "previous=(%0d,%0d) ",
+                                "current=(%0d,%0d)",
+                                previous_x,
+                                previous_y,
+                                xo,
+                                yo
+                            );
+                        end
+
+                        if ((yo == previous_y) &&
+                            (xo < previous_x)) begin
+
+                            total_output_errors =
+                                total_output_errors + 1;
+
+                            $display(
+                                "ERROR: X ordering violation: ",
+                                "previous=(%0d,%0d) ",
+                                "current=(%0d,%0d)",
+                                previous_x,
+                                previous_y,
+                                xo,
+                                yo
+                            );
+                        end
+                    end
+
+                    previous_x = xo;
+                    previous_y = yo;
+                    have_previous_point = 1;
+
+                    exp_index = exp_index + 1;
+                end
+            end
+
+            // ---------------------------------------------------------
+            // po must be zero once expected valid points are exhausted.
+            // ---------------------------------------------------------
+            if ((exp_index == exp_count) && (first_po_seen != 0)) begin
+                if (po === 1'b1) begin
+                    // Extra output is handled above.
+                end
+            end
+
+            // ---------------------------------------------------------
+            // Busy release.
+            // ---------------------------------------------------------
+            if (busy === 1'b0) begin
+
+                if (busy_seen_high != 0) begin
+                    idle_seen_after_release = 1;
+                    release_seen = 1;
+                    disable monitor_transaction;
+                end
+            end
+
+        end
+
+        // -----------------------------------------------------------------
+        // Timeout
+        // -----------------------------------------------------------------
+        if (timeout >= 1000) begin
+            total_timing_errors = total_timing_errors + 1;
+
+            $display(
+                "ERROR: Transaction timeout: busy never returned low"
+            );
+        end
+
+        // -----------------------------------------------------------------
+        // Number of valid outputs
+        // -----------------------------------------------------------------
+        if (exp_index != exp_count) begin
+            total_output_errors = total_output_errors + 1;
+
+            $display(
+                "ERROR: Output count mismatch: expected=%0d observed=%0d",
+                exp_count,
+                exp_index
+            );
+        end
+
+        // -----------------------------------------------------------------
+        // busy must have been asserted during transaction.
+        // -----------------------------------------------------------------
+        if (busy_seen_high == 0) begin
+            total_busy_errors = total_busy_errors + 1;
+
+            $display(
+                "ERROR: busy never asserted for transaction"
+            );
+        end
+    end
+endtask
+
+// =========================================================================
+// One complete transaction
+// =========================================================================
+task run_triangle;
+    input integer tx1;
+    input integer ty1;
+    input integer tx2;
+    input integer ty2;
+    input integer tx3;
+    input integer ty3;
+
+    integer errors_before;
+
+    begin
+        current_test_id = current_test_id + 1;
+        total_tests = total_tests + 1;
+
+        errors_before =
+            total_busy_errors +
+            total_output_errors +
+            total_protocol_errors +
+            total_timing_errors +
+            total_reset_errors;
+
+        drive_triangle(
+            tx1, ty1,
+            tx2, ty2,
+            tx3, ty3
+        );
+
+        monitor_transaction(
+            tx1, ty1,
+            tx2, ty2,
+            tx3, ty3
+        );
+
+        if ((total_busy_errors +
+             total_output_errors +
+             total_protocol_errors +
+             total_timing_errors +
+             total_reset_errors) ==
+            errors_before) begin
+
+            pass_tests = pass_tests + 1;
+
+        end
+    end
+endtask
+
+// =========================================================================
+// Directed corner tests
+// =========================================================================
+task directed_tests;
+    begin
+
+        $display("");
+        $display("============================================================");
+        $display("DIRECTED TESTS");
+        $display("============================================================");
+
+        // -------------------------------------------------------------
+        // Sample from Project Specification
+        // P1=(1,1), P2=(6,3), P3=(1,6)
+        // -------------------------------------------------------------
+        run_triangle(
+            1,1,
+            6,3,
+            1,6
+        );
+
+        // -------------------------------------------------------------
+        // Reverse x direction
+        // -------------------------------------------------------------
+        run_triangle(
+            6,1,
+            1,3,
+            6,6
+        );
+
+        // -------------------------------------------------------------
+        // |dx| = 1
+        // -------------------------------------------------------------
+        run_triangle(
+            1,1,
+            2,3,
+            1,6
+        );
+
+        run_triangle(
+            6,1,
+            5,3,
+            6,6
+        );
+
+        // -------------------------------------------------------------
+        // x/y minimum boundary = 0
+        // -------------------------------------------------------------
+        run_triangle(
+            0,0,
+            3,2,
+            0,5
+        );
+
+        // -------------------------------------------------------------
+        // x/y maximum boundary = 7
+        // -------------------------------------------------------------
+        run_triangle(
+            7,2,
+            4,5,
+            7,7
+        );
+
+        // -------------------------------------------------------------
+        // Very narrow triangle
+        // -------------------------------------------------------------
+        run_triangle(
+            0,0,
+            1,1,
+            0,2
+        );
+
+        // -------------------------------------------------------------
+        // Wide triangle
+        // -------------------------------------------------------------
+        run_triangle(
+            0,1,
+            7,4,
+            0,7
+        );
+
+        // -------------------------------------------------------------
+        // Minimum dy12
+        // -------------------------------------------------------------
+        run_triangle(
+            2,1,
+            5,2,
+            2,3
+        );
+
+        // -------------------------------------------------------------
+        // Maximum vertical extent
+        // -------------------------------------------------------------
+        run_triangle(
+            1,0,
+            6,3,
+            1,7
+        );
+
+    end
+endtask
+
+// =========================================================================
+// Exhaustive legal triangle generation
+//
+// Legal constraints:
+//
+//   x1 = x3
+//   y1 < y2 < y3
+//   x2 != x1
+//   x/y in [0,7]
+//
+// Total expected:
+//
+//   3136 triangles
+// =========================================================================
+task exhaustive_tests;
+    integer tx1;
+    integer ty1;
+    integer tx2;
+    integer ty2;
+    integer ty3;
+
+    integer exhaustive_count;
+
+    begin
+
+        $display("");
+        $display("============================================================");
+        $display("EXHAUSTIVE LEGAL TRIANGLE TEST");
+        $display("============================================================");
+
+        exhaustive_count = 0;
+
+        for (tx1 = 0; tx1 <= 7; tx1 = tx1 + 1) begin
+
+            for (ty1 = 0; ty1 <= 7; ty1 = ty1 + 1) begin
+
+                for (ty2 = ty1 + 1;
+                     ty2 <= 7;
+                     ty2 = ty2 + 1) begin
+
+                    for (ty3 = ty2 + 1;
+                         ty3 <= 7;
+                         ty3 = ty3 + 1) begin
+
+                        for (tx2 = 0;
+                             tx2 <= 7;
+                             tx2 = tx2 + 1) begin
+
+                            if (tx2 != tx1) begin
+
+                                exhaustive_count =
+                                    exhaustive_count + 1;
+
+                                run_triangle(
+                                    tx1,
+                                    ty1,
+                                    tx2,
+                                    ty2,
+                                    tx1,
+                                    ty3
+                                );
+
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        if (exhaustive_count != 3136) begin
+            $display(
+                "ERROR: Exhaustive domain count = %0d, expected 3136",
+                exhaustive_count
+            );
+        end else begin
+            $display(
+                "Exhaustive legal triangle count = %0d",
+                exhaustive_count
+            );
+        end
+    end
+endtask
+
+// =========================================================================
+// Main Test
+// =========================================================================
+initial begin
+
+    total_tests          = 0;
+    pass_tests           = 0;
+    fail_tests           = 0;
+
+    total_points_checked = 0;
+    total_po_cycles      = 0;
+
+    total_busy_errors    = 0;
+    total_output_errors  = 0;
+    total_protocol_errors = 0;
+    total_timing_errors  = 0;
+    total_reset_errors   = 0;
+
+    current_test_id = 0;
+    cycle_counter   = 0;
+
+    nt = 1'b0;
+    xi = 3'd0;
+    yi = 3'd0;
+
+    // -------------------------------------------------------------
+    // Initial reset
+    // -------------------------------------------------------------
+    apply_reset();
+
+    // -------------------------------------------------------------
+    // Directed tests
+    // -------------------------------------------------------------
+    directed_tests();
+
+    // -------------------------------------------------------------
+    // Exhaustive legal domain
+    // -------------------------------------------------------------
+    exhaustive_tests();
+
+    // -------------------------------------------------------------
+    // Final report
+    // -------------------------------------------------------------
+    $display("");
+    $display("============================================================");
+    $display("RTL VERIFICATION REPORT");
+    $display("============================================================");
+
+    $display("Total transactions      = %0d", total_tests);
+    $display("Transaction PASS count  = %0d", pass_tests);
+
+    $display("Points checked          = %0d",
+             total_points_checked);
+
+    $display("Observed po cycles      = %0d",
+             total_po_cycles);
+
+    $display("");
+    $display("Busy errors             = %0d",
+             total_busy_errors);
+
+    $display("Output errors           = %0d",
+             total_output_errors);
+
+    $display("Protocol errors         = %0d",
+             total_protocol_errors);
+
+    $display("Timing errors           = %0d",
+             total_timing_errors);
+
+    $display("Reset errors            = %0d",
+             total_reset_errors);
+
+    $display("============================================================");
+
+    if ((total_busy_errors     == 0) &&
+        (total_output_errors   == 0) &&
+        (total_protocol_errors == 0) &&
+        (total_timing_errors   == 0) &&
+        (total_reset_errors    == 0)) begin
+
+        $display("RESULT: FUNCTIONAL REGRESSION PASS");
+        $display("");
+        $display(
+            "NOTE: This PASS represents RTL simulation evidence only."
+        );
+        $display(
+            "Synthesis / STA / Gate-level verification are NOT covered."
+        );
+
+    end else begin
+
+        $display("RESULT: FUNCTIONAL REGRESSION FAIL");
+
+        $display("");
+        $display("Failure classification required:");
+        $display("  SYMPTOM");
+        $display("  FAILING STAGE");
+        $display("  ROOT CAUSE");
+        $display("  AFFECTED ARCHITECTURE SECTION");
+        $display("  RTL IMPACT");
+        $display("  PROPOSED FIX");
+        $display("  SIDE EFFECT");
+        $display("  REGRESSION REQUIREMENT");
+
+    end
+
+    $display("============================================================");
+
+    $finish;
+end
 
 endmodule

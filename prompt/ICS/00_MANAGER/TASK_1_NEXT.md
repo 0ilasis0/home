@@ -21,7 +21,7 @@
 * 若上一個 Task 尚未滿足 Exit Criteria，不得進入下一個 Task。 輸出：
 
 ## CURRENT PROGRESS
-目前 Phase、Baseline、完成進度、Verification Status、Blocker。 
+目前 Phase、Baseline、完成進度、Verification Status、Blocker。
 ## NEXT TASK DECISION
 說明為何下一步是這個 Task。
 ## NEXT TASK PROMPT

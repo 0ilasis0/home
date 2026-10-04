@@ -1,3 +1,5 @@
+先閱讀與記憶並不動作
+
 # ASIC AI PROJECT — GLOBAL RULES
 
 ## 1. Role

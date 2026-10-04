@@ -2036,3 +2036,9 @@ approves major design decisions and controlled changes
 > EDA tools provide implementation evidence.**
 
 任何單一 AI 都不得透過 coding style、implementation convenience 或 verification convenience，偷偷改變已確認的 architecture。
+
+
+# 71. 在coding前需要先標註以下資訊
+1. RTL Version:
+2. RTL Baseline ID:
+3. RTL Commit/Revision:
