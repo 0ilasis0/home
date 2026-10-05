@@ -1,7 +1,4 @@
-// RTL Version: 1.2.1
-// RTL Baseline ID: RTL-BASE-A1-TASK1-OPTIMIZED-BUGFIX
-// RTL Commit/Revision: BUG-RTL-002-FIXED (Stale registered direction fix)
-`timescale 1ns/1ps
+`timescale 100ps/10ps
 
 module triangle (
     input  wire       clk,
