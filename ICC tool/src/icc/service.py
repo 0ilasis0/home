@@ -76,13 +76,22 @@ def import_vcgt_txt(txt_path: Path) -> VcgtTable:
 def export_vcgt_txt(profile_path: Path) -> Path:
     """
     Reads the vcgt payload from the given profile, converts it to Little-Endian TXT format,
-    and exports it as 'vcgt_trans.txt' in the same directory as the input profile.
+    and exports it as '<input-profile-stem>_vcgt.txt' in the tool's output/ directory.
     Overwrites the file deterministically if it already exists.
     """
     table = read_vcgt(profile_path)
     txt_content = serialize_vcgt_txt(table)
 
-    out_path = profile_path.parent / "vcgt_trans.txt"
+    # 動態取得 Tool Root (與 gui.py 中取得的方式一致)
+    tool_root = Path(__file__).resolve().parent.parent.parent
+    out_dir = tool_root / "output"
+
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        raise ProfileError(f"Cannot create output directory: {e}") from e
+
+    out_path = out_dir / f"{profile_path.stem}_vcgt.txt"
     try:
         out_path.write_text(txt_content, encoding="utf-8")
     except OSError as e:

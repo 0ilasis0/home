@@ -9,9 +9,14 @@ from .models import VcgtTable
 from .service import (ProfileView, import_vcgt_txt, load_profile,
                       read_vcgt_dict, save_profile)
 
+# 動態取得 Tool Root (src/icc/gui.py 往上三層)
+TOOL_ROOT = Path(__file__).resolve().parent.parent.parent
+OUTPUT_DIR = TOOL_ROOT / "output"
+
 
 class IccTagEditorApp:
     def __init__(self, root: tk.Tk):
+        # ... 既有屬性 ...
         self.root = root
         self.root.title("ICC Profile Tag Editor")
         self.root.geometry("600x500")
@@ -21,7 +26,7 @@ class IccTagEditorApp:
         self.current_profile_view: Optional[ProfileView] = None
         self.current_vcgt_table: Optional[VcgtTable] = None
         self.pending_deletions = set()
-        self._last_attempted_path = "" # [NEW] 防止重複觸發載入
+        self._last_attempted_path = ""
 
         self._build_ui()
 
@@ -35,20 +40,16 @@ class IccTagEditorApp:
 
         ttk.Label(io_frame, text="Input:").grid(row=0, column=0, sticky=tk.W, pady=2)
         self.input_var = tk.StringVar(master=self.root)
-
-        # [MODIFIED] 保留實體 reference 以便綁定 Event
         self.input_entry = ttk.Entry(io_frame, textvariable=self.input_var, width=50)
         self.input_entry.grid(row=0, column=1, padx=5, pady=2)
-        # [NEW] 綁定 Enter 與 FocusOut 事件自動載入
         self.input_entry.bind("<Return>", self._on_enter)
         self.input_entry.bind("<FocusOut>", self._on_focusout)
-
         ttk.Button(io_frame, text="Browse", command=self._browse_input).grid(row=0, column=2, pady=2)
 
-        ttk.Label(io_frame, text="Output:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        # [MODIFIED] 修改輸出欄位，移除 Browse 按鈕，並提示固定輸出路徑
+        ttk.Label(io_frame, text="Output Filename:").grid(row=1, column=0, sticky=tk.W, pady=2)
         self.output_var = tk.StringVar(master=self.root)
         ttk.Entry(io_frame, textvariable=self.output_var, width=50).grid(row=1, column=1, padx=5, pady=2)
-        ttk.Button(io_frame, text="Browse", command=self._browse_output).grid(row=1, column=2, pady=2)
 
         # [REMOVED] 刪除 ttk.Button(io_frame, text="Load Profile", command=self._action_load)
 
@@ -154,17 +155,19 @@ class IccTagEditorApp:
     def _perform_load(self, path: Path):
         try:
             new_view = load_profile(path)
-            # 只有在載入"成功"時，才覆寫現有的 Profile 狀態
             self.current_profile_view = new_view
             self.input_profile = path
             self.input_var.set(str(path))
+            self._last_attempted_path = str(path)
+
+            # 自動帶入預設輸出檔名
+            self.output_var.set(path.name)
 
             self.pending_deletions.clear()
             self.current_vcgt_table = None
 
             self._refresh_tag_list()
         except ProfileError as e:
-            # 載入失敗：捕捉例外、顯示錯誤，並且完全保留畫面上原有的 Profile 狀態
             messagebox.showerror("Profile Error", str(e))
 
     # --- Actions ---
@@ -260,17 +263,32 @@ class IccTagEditorApp:
         self._update_status(f"Marked {len(self.pending_deletions)} tags for deletion. Click Save ICC Profile to commit.")
 
     def _action_save_profile(self):
-        # 這是唯一的 Save Entry Point
-        if not self.input_profile or not self.output_var.get():
-            messagebox.showwarning("Warning", "Please specify both input profile and output path.")
+        out_filename = self.output_var.get().strip()
+        if not self.input_profile or not out_filename:
+            messagebox.showwarning("Warning", "Please specify both an input profile and an output filename.")
             return
 
-        out_path = Path(self.output_var.get())
+        # [FIX] 安全性檢查：確保輸出只是單純的「檔名」，不得包含任何路徑或目錄遍歷符號
+        if any(sep in out_filename for sep in ("/", "\\")) or out_filename in (".", "..") or Path(out_filename).drive:
+            messagebox.showwarning("Warning", "Output must be a simple filename, not a directory path.")
+            return
+
+        # 強制綁定輸出路徑至 Tool Root 下的 output 資料夾
+        out_path = OUTPUT_DIR / out_filename
+
+        # 嘗試建立 output 資料夾
         try:
+            OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            messagebox.showerror("File Error", f"Cannot create output directory:\n{e}")
+            return
+
+        try:
+            from .service import save_profile
             save_profile(self.input_profile, out_path, self.current_vcgt_table, self.pending_deletions)
             self._update_status("Profile saved successfully.")
 
-            # Save 成功後，自動將 Output Profile 載入成為新的 Input Profile (Chaining Behavior)
+            # [STATE CHAINING] 新的產出變成 current profile
             self._perform_load(out_path)
         except ProfileError as e:
             messagebox.showerror("Save Error", str(e))
