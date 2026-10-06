@@ -1,2 +1,16 @@
-litex-buildenv-master
+litepcie-master  -  enjoy-digital/litepcie
+https://github.com/enjoy-digital/litepcie?utm_source=chatgpt.com
+
+litex-2026.08  -  enjoy-digital/litex
+https://github.com/enjoy-digital/litex?utm_source=chatgpt.com
+
+litex-boards-master  -  litex-hub/litex-boards
+https://github.com/litex-hub/litex-boards?utm_source=chatgpt.com
+
+---暫緩
+
+litex-buildenv-master  -  antmicro/litex-buildenv
 https://github.com/antmicro/litex-buildenv?utm_source=chatgpt.com
+
+備註：
+最近研究-enjoy-digital/litex
