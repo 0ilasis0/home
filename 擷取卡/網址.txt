@@ -1,3 +1,6 @@
+AlphamaxMedia  -  netv2-fpga
+https://github.com/AlphamaxMedia/netv2-fpga?utm_source=chatgpt.com
+
 litepcie-master  -  enjoy-digital/litepcie
 https://github.com/enjoy-digital/litepcie?utm_source=chatgpt.com
 
@@ -13,4 +16,4 @@ litex-buildenv-master  -  antmicro/litex-buildenv
 https://github.com/antmicro/litex-buildenv?utm_source=chatgpt.com
 
 備註：
-最近研究-enjoy-digital/litex
+最近研究AlphamaxMedia  -  netv2-fpga
