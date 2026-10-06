@@ -1,16 +1,27 @@
 AlphamaxMedia  -  netv2-fpga
 https://github.com/AlphamaxMedia/netv2-fpga?utm_source=chatgpt.com
+使用LiteX，但做的是HDMI->FPGA->HDMI
 
 litepcie-master  -  enjoy-digital/litepcie
 https://github.com/enjoy-digital/litepcie?utm_source=chatgpt.com
+
+litex-hub  -  litevideo
+https://github.com/litex-hub/litevideo?utm_source=chatgpt.com
+
+flytt-away  -  FPGA-Video-Capture
+https://github.com/flytt-away/FPGA-Video-Capture?utm_source=chatgpt.com
+有完成HDMI IN -> FPGA -> PCIe -> PC 但只有FPGA RTL/Design 沒有PC PCIe driver
+
+---暫緩
+
+
+--- lite進階
 
 litex-2026.08  -  enjoy-digital/litex
 https://github.com/enjoy-digital/litex?utm_source=chatgpt.com
 
 litex-boards-master  -  litex-hub/litex-boards
 https://github.com/litex-hub/litex-boards?utm_source=chatgpt.com
-
----暫緩
 
 litex-buildenv-master  -  antmicro/litex-buildenv
 https://github.com/antmicro/litex-buildenv?utm_source=chatgpt.com
