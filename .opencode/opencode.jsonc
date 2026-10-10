@@ -1,0 +1,54 @@
+﻿{
+"$schema": "https://opencode.ai/config.json",
+
+// 預設由 Orchestrator 接收使用者任務
+"default_agent": "orchestrator",
+
+// V2 原生設定：Primary Agent 可委派給 Specialist，
+// Specialist 不可再向下委派
+"experimental": {
+"subagent_depth": 1
+},
+
+// V2 原生 Provider 設定
+"providers": {
+    "ollama": {
+    "name": "Ollama Local",
+      // 使用本機 Ollama 的 OpenAI-compatible endpoint
+      "settings": {
+        "baseURL": "http://localhost:11434/v1"
+      },
+
+      // 保留原本的模型 ID 與顯示名稱
+      "models": {
+        "qwen3:30b": {
+          "name": "Qwen3 30B - Orchestrator"
+        },
+
+        "hf.co/bartowski/DeepSeek-R1-Distill-Qwen-14B-GGUF:Q5_K_M": {
+          "name": "DeepSeek R1 Distill Qwen 14B - Planning"
+        },
+
+        "qwen2.5-coder:14b": {
+          "name": "Qwen2.5 Coder 14B - Main Coding"
+        },
+
+        "qwen2.5-coder:7b": {
+          "name": "Qwen2.5 Coder 7B - Lightweight Coding"
+        },
+
+        "deepseek-r1:8b": {
+          "name": "DeepSeek R1 8B - Review"
+        },
+
+        "qwen3:8b": {
+          "name": "Qwen3 8B - Research"
+        },
+
+        "llama3.1:8b": {
+          "name": "Llama 3.1 8B - Integration"
+        }
+      }
+    }
+  }
+}
