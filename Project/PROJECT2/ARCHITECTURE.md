@@ -2147,3 +2147,27 @@ $$
 > **任何 `busy=0` 的 cycle，只要 `start=1`，即可接受新的 operation；因此 `done=1` 的 cycle 也可以同時接受下一個 `start`，不需要額外 idle cycle。**
 
 此 Architecture Specification v1.0 為 RTL implementation 的正式架構基準，但在 human explicit approval 前維持 **PROPOSED / NOT FROZEN** 狀態。
+
+
+# 38. 補充：
+1. Sprite ROM 資料寬度釐清，系統方塊圖（圖 2）中 Sprite ROM 方塊內部標示之「384*12」為誤植，實際資料寬度為 13 bits。   實作時，介面輸出訊號 SR_Q 應宣告為 13 bits (SR_Q[12:0])。   每一筆像素資料結構固定由 12 bits 的 RGB 資訊（R: 129, G: 85, B: 4~1）與 1 bit 的透明度設定（mask: 第 0 bit）組成，所有 RTL 整合與 ROM 讀取皆須以此 13 bits 為準。
+2. Man 狀態轉換與重疊規則補充，最終判定機制：
+面對多個 Ghost 或 Candy 依序輸入的情境，系統不需在接收每筆物件時逐次觸發狀態切換。控制器只需在所有物件資料輸入完畢後，統整全域覆蓋情形，直接輸出最終判定結果即可。
+重疊判定基準：
+無論最終狀態為何，Man 與其他遊戲物件的「重疊有效性」判定，一律固定以 Man (live) 狀態的 mask 值為唯一判斷依據。   混合重疊規則： 依據最終畫面佈局，若 Man 發生同時與 Candy 及 Ghost 有效重疊的狀況，其最終狀態判定為 happy。
+3. 重疊判斷的實作依據補充物件 Mask 依據：
+規格書中明確定義，Man 與其他物件進行重疊判斷時，一律以 Man (live) 的 mask 為判斷依據。而在重疊判斷範例中，另一物件（如 Candy）則是使用其自身原始的 mask 值來進行像素交集對比。因此，Ghost、Candy、Flower 均使用原始定義的 mask 參與判斷。
+圖層遮蔽對狀態的影響：
+兩個物件只要 mask=1 的部份在座標上重疊，即判定為重疊有效。針對不同物件彼此之間的遮蔽是否會影響狀態判斷，規格書中並未說明清楚。依據現有規格的字面推論，狀態機的條件僅單純受「是否發生有效重疊」觸發，設計上應將「狀態計算（絕對座標交集）」與「最終畫面合成（依輸入順序決定圖層上下關係）」視為獨立的兩道處理邏輯。
+4. Sprite ROM 讀取時序與同步延遲釐清時序與延遲說明：
+關於 SR_A 改變後 SR_Q 確切應在第幾個 clock cycle 取樣，規格書中並未說明清楚，僅透過時序圖提供硬體特性。依據 Sprite ROM Read 時序圖，讀取動作為同步設計，位址 SR_A 滿足時脈正緣的 Setup/Hold time 後，資料 SR_Q 會在該時脈正緣過後產生最大 1ns 的存取時間延遲（Access time, t_A = 1ns）。
+FSM 實作排程：
+由於系統時脈週期（T_cycle）為使用者自訂，只要 T_cycle 大於 1ns，控制器（SGDE）在時脈正緣 T 發出穩定位址後，資料必定會於同一個 cycle 內準備完成。設計者需依據此 t_A 延遲特性自行設計 FSM 排程，通常應在下一個時脈正緣（T+1）對 SR_Q 進行安全取樣。
+5. Frame Buffer 的初始化及寫入行為釐清初始化與底色寫入時機：
+規格書中明確定義，畫面中未被有效物件覆蓋之區域，必須填入底色 12'b110011110000，且引擎的任務是將所有 4096 個 pixel 的 RGB 資訊儲存進 Frame Buffer 中。然而，規格書並未說明清楚 reset 之後 Frame Buffer 的初始記憶體內容為何。規格僅提及系統在啟動送出 reset 訊號時，SGDE 需進行「前置工作準備」，準備期間 ready 設為 low。至於底色應該在此前置準備階段預先初始化，還是等到接收 start 訊號後與物件圖層一併計算並寫入，需由設計者自行定義實作流程。
+讀寫時序與等待週期：
+對於畫面合成期間是否需要對 Frame Buffer 進行讀後修改寫回（Read-Modify-Write）以及確切的處理週期，規格書並未說明清楚。規格僅定義了 Frame Buffer 讀寫的硬體時序限制（例如存取延遲 Access time 為 1ns，資料與位址的 setup/hold time 等）。圖層合成的記憶體存取排程與所耗費的 clock cycle，需依賴設計者自行設計。
+6. 專案時脈與實作限制釐清系統時脈限制：
+規格書中沒有說明清楚（也未強制指定）固定的官方時脈週期。規格書明確將 T_cycle 標示為「user defined」，並註明測試樣本（testfixture.v）內所定義的時脈週期參數「可由同學們依需求自行修改」。最終評分會依據同學自行定義的系統時脈下，確保無 setup/hold time 違例，並計算包含運作頻率在內的 Performance Metric 來給分。
+實作與合成約束：
+關於 Design Compiler 的精確約束條件、目標標準元件庫或完整的 physical constraints，規格書中並未提供具體數值細節。規格書僅提及助教會提供相對應的設定檔，例如 synopsys_dc.setup、SGDE.tcl (Design Compiler constraint 腳本)，以及包含 mmmc、LEF 等設定的 Encounter_example 範例檔。實體的合成與 STA 分析限制均需以這些外部檔案的實際內容為準。
