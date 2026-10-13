@@ -15,3 +15,6 @@ Xilinx Artix-7 FPGA
 我們的目的是：
 HDMI IN -> FPGA -> PCIe -> PC 單向還是雙向
 PC -> PCIe -> FPGA -> HDMI OUT
+
+FPGA可能需要轉換成 H.264/MPEG-4 再將資料傳給 PCIE 給 PC
+更高級可以使用 nv12 格式

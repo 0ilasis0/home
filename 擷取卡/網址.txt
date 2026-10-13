@@ -9,6 +9,18 @@ flytt-away  -  FPGA-Video-Capture
 https://github.com/flytt-away/FPGA-Video-Capture?utm_source=chatgpt.com
 有完成HDMI IN -> FPGA -> PCIe -> PC 但只有FPGA RTL/Design 沒有PC PCIe driver
 
+hd60pro-linux-driver
+https://github.com/Wolffyx/hd60pro-linux-driver
+
+Kintex-7-PCIe-DMA
+https://github.com/apoj-inc/Kintex-7-PCIe-DMA
+
+tang-monitor
+https://github.com/kami4ka/tang-monitor
+
+litefury_pcie
+https://github.com/hdlguy/litefury_pcie
+
 ---暫緩
 
 litex-hub  -  litevideo

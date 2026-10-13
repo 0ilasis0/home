@@ -7,8 +7,32 @@ color: "#A78BFA"
 steps: 8
 permissions:
   - action: subagent
-    resource: "*"
-    effect: deny
+    resource: planner
+    effect: allow
+
+  - action: subagent
+    resource: coder
+    effect: allow
+
+  - action: subagent
+    resource: reviewer
+    effect: allow
+
+  - action: subagent
+    resource: verification-engineer
+    effect: allow
+
+  - action: subagent
+    resource: researcher
+    effect: allow
+
+  - action: subagent
+    resource: integration-engineer
+    effect: allow
+
+  # - action: subagent
+  #   resource: "*"
+  #   effect: deny
 
   # 預設禁止修改任何檔案
   - action: edit
