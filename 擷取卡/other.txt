@@ -13,8 +13,28 @@ Xilinx Artix-7 FPGA
 
 
 我們的目的是：
-HDMI IN -> FPGA -> PCIe -> PC 單向還是雙向
-PC -> PCIe -> FPGA -> HDMI OUT
+HDMI IN -> FPGA -> PCIe -> PC 
 
 FPGA可能需要轉換成 H.264/MPEG-4 再將資料傳給 PCIE 給 PC
 更高級可以使用 nv12 格式
+
+IP授權
+硬體要求
+source code完整性
+Linux
+
+
+有辦法找到兩個開源專案符合下面標準嗎？找不到也沒關係就說沒有完全符合
+開源且source code完整
+目標流程 HDMI IN → FPGA → PCIe → PC (Linux)可拆成兩段兩個專案 HDMI IN → FPGA 與 FPGA → PCIe → PC (Linux)
+使用相同開發版的開源
+最好是有驗證且確定該功能可直接套用code後生效
+
+
+應該說明此專案能做甚麼做到甚麼程度對於真正目標的標HDMI → FPGA → PCIe DMA → PC有甚麼幫助，並且有那些限制使用了那些硬體或是IP開發環境、工具等等才對吧？
+
+
+這個專案實際做了什麼，哪些部分有程式碼支持？
+它缺少什麼，哪些功能不能認定已經完成或驗證？
+它對你的 HDMI IN → FPGA → PCIe → PC 研究有什麼幫助？
+它使用的技術、IP 與架構，是否能和你已調查的其他專案拼接？

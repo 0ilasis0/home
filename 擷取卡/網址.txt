@@ -5,9 +5,32 @@ https://github.com/AlphamaxMedia/netv2-fpga?utm_source=chatgpt.com
 litepcie-master  -  enjoy-digital/litepcie
 https://github.com/enjoy-digital/litepcie?utm_source=chatgpt.com
 
+litevideo
+https://github.com/litex-hub/litevideo
+已經廢棄
+
+AX7103
+https://github.com/alinxalinx/AX7103
+使用的是windows系統
+
+dma_ip_drivers
+https://github.com/Xilinx/dma_ip_drivers
+
+
+Artix-7-HDMI-processing
+https://github.com/hamsternz/Artix-7-HDMI-processing
+
+Xilinx-FPGA-PCIe-XDMA-Tutorial
+https://github.com/WangXuan95/Xilinx-FPGA-PCIe-XDMA-Tutorial
+只有教學FPGA PCIE2PC(Linux)
+
 flytt-away  -  FPGA-Video-Capture
 https://github.com/flytt-away/FPGA-Video-Capture?utm_source=chatgpt.com
 有完成HDMI IN -> FPGA -> PCIe -> PC 但只有FPGA RTL/Design 沒有PC PCIe driver
+且使用紫光IP
+
+video-capture-and-process
+https://github.com/WzyNoEmo/video-capture-and-process
 
 hd60pro-linux-driver
 https://github.com/Wolffyx/hd60pro-linux-driver
@@ -21,11 +44,6 @@ https://github.com/kami4ka/tang-monitor
 litefury_pcie
 https://github.com/hdlguy/litefury_pcie
 
----暫緩
-
-litex-hub  -  litevideo
-https://github.com/litex-hub/litevideo?utm_source=chatgpt.com
-已經廢棄
 
 --- lite進階
 
