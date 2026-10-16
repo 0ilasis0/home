@@ -1,17 +1,3 @@
-NeTV2 Libre SoC。它的公開架構包含 HDMI Capture/Playback、DDR3、DMA，以及 PCIe Gen2 x4 與 Host 的資料交換。
-但實際確定有做到的是 HDMI IN → HDMI RX → FPGA Video Data → Video Processing →  HDMI TX → HDMI OUT
-使用的晶片：Xilinx Artix7 FPGA.
-板子是：NeTV2
-
-NeTV2 本身是一張：
-Xilinx Artix-7 FPGA
-        │
-        ├── HDMI IN * 2
-        ├── HDMI OUT * 2
-        ├── DDR3
-        └── PCIe x4
-
-
 我們的目的是：
 HDMI IN -> FPGA -> PCIe -> PC 
 
@@ -22,6 +8,9 @@ IP授權
 硬體要求
 source code完整性
 Linux
+
+
+我的整體報告是先簡單講解擷取卡架構接著就進入不同專案分析，先從Lite開始1.NETV2 2.LitePCIe 3.LiteX 接著我脫離Lite生態開始講
 
 
 有辦法找到兩個開源專案符合下面標準嗎？找不到也沒關係就說沒有完全符合

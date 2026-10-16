@@ -15,7 +15,12 @@ https://github.com/alinxalinx/AX7103
 
 dma_ip_drivers
 https://github.com/Xilinx/dma_ip_drivers
+只有PC driver
 
+Video-Example-Designs
+https://github.com/Xilinx-Wiki-Projects/Video-Example-Designs
+HDMI to HDMI
+使用Xilinx
 
 Artix-7-HDMI-processing
 https://github.com/hamsternz/Artix-7-HDMI-processing
@@ -25,9 +30,9 @@ https://github.com/WangXuan95/Xilinx-FPGA-PCIe-XDMA-Tutorial
 只有教學FPGA PCIE2PC(Linux)
 
 flytt-away  -  FPGA-Video-Capture
-https://github.com/flytt-away/FPGA-Video-Capture?utm_source=chatgpt.com
+https://github.com/flytt-away/FPGA-Video-Capture
 有完成HDMI IN -> FPGA -> PCIe -> PC 但只有FPGA RTL/Design 沒有PC PCIe driver
-且使用紫光IP
+使用紫光IP
 
 video-capture-and-process
 https://github.com/WzyNoEmo/video-capture-and-process
