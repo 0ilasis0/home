@@ -1619,3 +1619,7 @@ A successful architecture document should allow an independent RTL engineer to a
 * Which implementation decisions must not be changed?
 
 If these questions cannot be answered from the architecture document, the architecture is not sufficiently defined for RTL handoff.
+
+
+
+必須在給出回覆 manager 的 prompt 前給 human 的此次進度報告總結
