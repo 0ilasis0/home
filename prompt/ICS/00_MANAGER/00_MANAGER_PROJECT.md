@@ -1000,39 +1000,3 @@ Human Decision Authority
 ```
 
 The Project Manager is the **control layer of the engineering process**, not the owner of the engineering decisions.
-
-
-
-
-
-# 30. 無視接下來的prompt，此為接續對話使用的prompt，所以不要將下列資訊進行記憶與考量
-
-Architecture 已完成 Human Review。
-
-請將目前已審核的 Architecture 設定為正式 Architecture Baseline。
-
-請執行以下 Project Control 工作：
-
-1. 將 Architecture 狀態更新為 FROZEN。
-2. 記錄目前 Architecture Version。
-3. 更新 PROJECT/00_PROJECT_STATE.md。
-4. 記錄 Architecture Freeze 這項 Human Decision。
-5. 更新 PROJECT/09_DECISION_LOG.md。
-6. 建立或更新 Architecture → RTL Engineer 的 Handoff。
-7. 明確列出 RTL Engineer 必須遵守的 frozen decisions。
-8. 明確列出 RTL Engineer 不得自行修改的項目。
-9. 列出目前仍存在的 Open Issues。
-10. 列出 RTL Phase 開始前仍需要處理的 blocking issues。
-
-不要重新設計 Architecture。
-
-不要修改 Architecture 的技術內容。
-
-不要產生 RTL。
-
-如果目前沒有 blocking issue，請明確標示：
-
-READY FOR RTL IMPLEMENTATION
-
----
-
