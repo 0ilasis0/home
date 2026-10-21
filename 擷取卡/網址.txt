@@ -1,6 +1,28 @@
+---liteX
+
 AlphamaxMedia  -  netv2-fpga
 https://github.com/AlphamaxMedia/netv2-fpga?utm_source=chatgpt.com
 使用LiteX，但做的是HDMI->FPGA->HDMI
+
+netv2mvp-scripts
+https://github.com/AlphamaxMedia/netv2mvp-scripts
+
+
+litefury_pcie
+https://github.com/hdlguy/litefury_pcie
+
+litex-buildenv-master  -  antmicro/litex-buildenv
+https://github.com/antmicro/litex-buildenv?utm_source=chatgpt.com
+
+litex_m2sdr
+https://github.com/enjoy-digital/litex_m2sdr?utm_source=chatgpt.com
+
+
+litex-2026.08  -  enjoy-digital/litex
+https://github.com/enjoy-digital/litex?utm_source=chatgpt.com
+
+litex-boards-master  -  litex-hub/litex-boards
+https://github.com/litex-hub/litex-boards?utm_source=chatgpt.com
 
 litepcie-master  -  enjoy-digital/litepcie
 https://github.com/enjoy-digital/litepcie?utm_source=chatgpt.com
@@ -8,6 +30,18 @@ https://github.com/enjoy-digital/litepcie?utm_source=chatgpt.com
 litevideo
 https://github.com/litex-hub/litevideo
 已經廢棄
+
+
+---SDI daughter board
+
+Antmicro SDI-to-MIPI Video Converter
+https://github.com/antmicro/sdi-mipi-video-converter?utm_source=chatgpt.com
+
+Antmicro SDI-to-MIPI Bridge
+https://github.com/antmicro/sdi-mipi-bridge?utm_source=chatgpt.com
+
+
+---other
 
 AX7103
 https://github.com/alinxalinx/AX7103
@@ -45,18 +79,3 @@ https://github.com/apoj-inc/Kintex-7-PCIe-DMA
 
 tang-monitor
 https://github.com/kami4ka/tang-monitor
-
-litefury_pcie
-https://github.com/hdlguy/litefury_pcie
-
-
---- lite進階
-
-litex-2026.08  -  enjoy-digital/litex
-https://github.com/enjoy-digital/litex?utm_source=chatgpt.com
-
-litex-boards-master  -  litex-hub/litex-boards
-https://github.com/litex-hub/litex-boards?utm_source=chatgpt.com
-
-litex-buildenv-master  -  antmicro/litex-buildenv
-https://github.com/antmicro/litex-buildenv?utm_source=chatgpt.com
