@@ -1,13 +1,13 @@
 我們的目的是：
-HDMI IN -> FPGA -> PCIe -> PC 
+SDI / HDMI IN->FPGA->PCIe->linux driver
 
 FPGA可能需要轉換成 H.264/MPEG-4 再將資料傳給 PCIE 給 PC
 更高級可以使用 nv12 格式
 
 
-
+oc_sk_b6425391e094_qdihcKvTUFmv2e9jFzlMjuMmKQoeuY21
 SDI daughter board
-
+1l
 SDI擴充版
 
 方案 A：SDI → HDMI 轉換器 → NeTV2
@@ -23,5 +23,16 @@ SDI擴充版
 - 缺點是必須確認 NeTV2 可用的 FPGA I/O、電氣規格與時鐘配置；可能需要自製轉接 PCB，且 SDI RX 邏輯需要自行整合。
 
 
-decklink_mini_4k
-SDI PCIE HDMI都有
+幫我具有其中一種硬體規格的開發版，有符合地都列出來
+有HDMI IN、PCIE、SDI IN
+有SDI IN、PCIE
+有HDMI IN、PCIE
+
+幫我查要確認都符合
+有開源專案使用該板子
+使用的是liteX生態的專案
+專案需要有做實作並驗證
+沒有就說沒有
+
+
+娜先幫我簡單下結論，不是和使用liteX的原因，xilinx zcu106就算支援liteX也不合適的原因

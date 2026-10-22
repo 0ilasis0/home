@@ -7,6 +7,9 @@ https://github.com/AlphamaxMedia/netv2-fpga?utm_source=chatgpt.com
 netv2mvp-scripts
 https://github.com/AlphamaxMedia/netv2mvp-scripts
 
+NeTV2 電路圖
+https://github.com/AlphamaxMedia/netv2-mainboard/blob/master/netv2mvp-pvt1.pdf
+
 
 litefury_pcie
 https://github.com/hdlguy/litefury_pcie
@@ -16,6 +19,9 @@ https://github.com/antmicro/litex-buildenv?utm_source=chatgpt.com
 
 litex_m2sdr
 https://github.com/enjoy-digital/litex_m2sdr?utm_source=chatgpt.com
+
+netv2-fpga-dvi-decoder
+https://github.com/bunnie/netv2-fpga-dvi-decoder
 
 
 litex-2026.08  -  enjoy-digital/litex
