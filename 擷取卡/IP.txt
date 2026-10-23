@@ -1,0 +1,19 @@
+1. DRAM
+Memory Interface Generator：
+DDR4 SDRAM (MIG)
+
+AXI DMA：
+AXI Direct Memory Access (AXI DMA)
+or
+AXI Video Direct Memory Access
+
+2. HDMI RX
+HDMI 1.4/2.0 Receiver Subsystem
+
+3. SDI RX
+SMPTE UHD-SDI RX SUBSYSTEM
+
+4. PCIe DMA (QDMA XDMA)
+Queue DMA Subsystem for PCI Express
+or
+DMA/Bridge Subsystem for PCI Express
