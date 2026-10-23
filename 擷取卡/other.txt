@@ -4,12 +4,6 @@ SDI / HDMI IN->FPGA->PCIe->linux driver
 FPGA可能需要轉換成 H.264/MPEG-4 再將資料傳給 PCIE 給 PC
 更高級可以使用 nv12 格式
 
-
-oc_sk_b6425391e094_qdihcKvTUFmv2e9jFzlMjuMmKQoeuY21
-SDI daughter board
-1l
-SDI擴充版
-
 方案 A：SDI → HDMI 轉換器 → NeTV2
 - SDI 訊號先由外部轉換器解碼成 HDMI。
 - 接入 NeTV2 的 HDMI 輸入，再透過既有 HDMI-to-PCIe 設計擷取影像。
@@ -33,6 +27,3 @@ SDI擴充版
 使用的是liteX生態的專案
 專案需要有做實作並驗證
 沒有就說沒有
-
-
-娜先幫我簡單下結論，不是和使用liteX的原因，xilinx zcu106就算支援liteX也不合適的原因
