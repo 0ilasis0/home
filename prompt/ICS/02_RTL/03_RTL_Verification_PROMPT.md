@@ -2493,3 +2493,6 @@ Evidence
 ```
 
 這是本專案 RTL Verification 的核心工作方式。
+
+
+# 106. 你的所有驗證我都會用 vivado 做測試並提交結果報告
