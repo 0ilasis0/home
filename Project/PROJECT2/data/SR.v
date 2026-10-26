@@ -1,19 +1,19 @@
 //
 //      CONFIDENTIAL AND PROPRIETARY SOFTWARE/DATA OF ARTISAN COMPONENTS, INC.
-//      
+//
 //      Copyright (c) 2007 Artisan Components, Inc.  All Rights Reserved.
-//      
+//
 //      Use of this Software/Data is subject to the terms and conditions of
 //      the applicable license agreement between Artisan Components, Inc. and
 //      Taiwan Semiconductor Manufacturing Company Ltd..  In addition, this Software/Data
 //      is protected by copyright law and international treaties.
-//      
+//
 //      The copyright notice(s) in this Software/Data does not indicate actual
 //      or intended publication of this Software/Data.
 //      name:			ROM-DIFF-HS ROM Generator
 //           			TSMC CL013G Process
 //      version:		2002Q3V1
-//      comment:		
+//      comment:
 //      configuration:	 -instname SR -words 384 -bits 13 -frequency 20 -ring_width 2 -code_file "./romcod.txt" -mux 16 -drive 6 -top_layer met8 -power_type rings -horiz met3 -vert met4 -cust_comment "" -left_bus_delim "[" -right_bus_delim "]" -pwr_gnd_rename "VDD:VDD,GND:VSS" -prefix "" -pin_space 0.0 -name_case upper -check_instname on -diodes on -inside_ring_type GND
 //
 //      Verilog model for Synchronous Single-Port Rom
@@ -32,12 +32,12 @@
 //          delay timing is included in the model. Back-annotation of SDF
 //          (v2.1) is supported.  SDF can be created utilyzing the delay
 //          calculation views provided with this generator and supported
-//          delay calculators.  All buses are modeled [MSB:LSB].  All 
+//          delay calculators.  All buses are modeled [MSB:LSB].  All
 //          ports are padded with Verilog primitives.
 //
 //      Modeling Limitations: The output hold function has been deleted
-//          completely from this model.  Most Verilog simulators are 
-//          incapable of scheduling more than 1 event on the rising 
+//          completely from this model.  Most Verilog simulators are
+//          incapable of scheduling more than 1 event on the rising
 //          edge of clock.  Therefore, it is impossible to model
 //          the output hold (to x) action correctly.  It is necessary
 //          to run static path timing tools using Artisan supplied
@@ -65,7 +65,7 @@ module SR (
    parameter		   addr_width = 9;
    parameter		   wordx = {BITS{1'bx}};
    parameter		   addrx = {addr_width{1'bx}};
-	
+
    output [12:0] Q;
    input CLK;
    input CEN;
@@ -114,14 +114,14 @@ module SR (
    reg [BITS-1:0]	   Qi;
 
    reg			   LAST_CLK;
- 
+
    wire re_flag ;
    assign re_flag = !(_CEN) ;
 
 
    assign _Q = Qi ;
 
-initial 
+initial
 	$readmemb("SR_verilog.rcf", mem );
 
 
@@ -154,8 +154,8 @@ initial
       endcase
    end
    endtask
-      
-      
+
+
    task update_last_notifiers;
    begin
       LAST_NOT_A = NOT_A;
@@ -300,7 +300,7 @@ initial
 	   2'b11: ;
 
 	   2'b?x: read_mem(0,1);
-	   
+
 	 endcase
 	 LAST_CLK = _CLK;
       end
