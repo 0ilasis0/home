@@ -1,3 +1,5 @@
+`timescale 100ps/1ps
+
 module SGDE (ready, done, clk, reset, sprite, start, type, X, Y,
              SR_CEN, SR_A, SR_Q, FB_CEN, FB_WEN, FB_A, FB_D, FB_Q);
 
@@ -11,334 +13,311 @@ output ready, done;
 output reg SR_CEN, FB_CEN, FB_WEN;
 output reg [8:0] SR_A;
 output reg [11:0] FB_A, FB_D;
-reg done;
+reg    done;
 
-localparam MAX_SPRITES = 20;
 localparam [11:0] BACKGROUND = 12'hCF0;
+localparam [4:0]  NSPR       = 5'd20;
 
-localparam [4:0] S_IDLE            = 5'd0;
-localparam [4:0] S_FILL            = 5'd1;
-localparam [4:0] S_FIND_MAN        = 5'd2;
-localparam [4:0] S_FIND_PAIR       = 5'd3;
-localparam [4:0] S_READ_MAN        = 5'd5;
-localparam [4:0] S_WAIT_MAN        = 5'd6;
-localparam [4:0] S_WAIT_OTHER      = 5'd8;
-localparam [4:0] S_SET_MAN_STATE   = 5'd10;
-localparam [4:0] S_SELECT_DRAW     = 5'd11;
-localparam [4:0] S_DRAW_READ       = 5'd12;
-localparam [4:0] S_DRAW_WAIT       = 5'd13;
-localparam [4:0] S_DONE            = 5'd16;
+// ---------------- state encoding -------------------------------------------
+localparam [3:0] S_IDLE  = 4'd0,
+                 S_FILL  = 4'd1,
+                 S_PAIR  = 4'd2,
+                 S_SCAN  = 4'd3,
+                 S_WSCAN = 4'd4,
+                 S_WOTH  = 4'd5,
+                 S_MST   = 4'd6,
+                 S_DSEL  = 4'd7,
+                 S_DREAD = 4'd8,
+                 S_DWAIT = 4'd9,
+                 S_DONE  = 4'd10;
 
-reg [4:0] state;
-reg [5:0] sprite_count;
-reg [11:0] fill_address;
-reg [4:0] man_index, other_index, draw_index;
-reg [3:0] scan_x, scan_y;
-reg [3:0] scan_start_x, scan_start_y;
-reg [3:0] scan_end_x, scan_end_y;
-reg [5:0] pixel_index;
-reg [1:0] draw_pass;
-reg [5:0] sprite_x [0:MAX_SPRITES-1];
-reg [5:0] sprite_y [0:MAX_SPRITES-1];
-reg [1:0] sprite_type [0:MAX_SPRITES-1];
-reg [1:0] man_state [0:MAX_SPRITES-1];
-reg man_hit_candy, man_hit_ghost, man_mask_pixel;
+reg [3:0]  state;
+reg [13:0] spr [0:19];           // {X[5:0], Y[5:0], type[1:0]}
+reg [4:0]  n;                    // number of stored sprites
+reg [1:0]  man_state;            // 0 live, 1 happy, 2 die
+reg [11:0] fill_addr;
+reg [4:0]  pair_i, di;
+reg [2:0]  sxs, sys;             // scan counters (window relative)
+reg [2:0]  sx0, sy0;             // window origin in Man-local coords
+reg [3:0]  sw, sh;               // window size (1..8)
+reg [2:0]  oth0x, oth0y;         // window origin in other-local coords
+reg [2:0]  q_oth;                // ROM base (in 64-word units) of the other
+reg [5:0]  pix;
+reg [1:0]  pass;
+reg [5:0]  cur_x, cur_y;
+reg [2:0]  cur_q;
+reg        hit_c, hit_g;
 
-wire [6:0] man_pixel_x;
-wire [6:0] man_pixel_y;
-wire [6:0] overlap_left;
-wire [6:0] overlap_top;
-wire [6:0] overlap_right;
-wire [6:0] overlap_bottom;
-wire [6:0] man_right;
-wire [6:0] man_bottom;
-wire [6:0] other_right;
-wire [6:0] other_bottom;
-wire [6:0] other_local_x;
-wire [6:0] other_local_y;
-wire [6:0] draw_pixel_x;
-wire [6:0] draw_pixel_y;
-wire [8:0] draw_rom_base;
+reg        srmask;               // SR_Q[0] sampled on the falling edge
 
 assign ready = (state == S_IDLE) && !reset;
 
-assign man_pixel_x = {1'b0, sprite_x[man_index]} + {3'b0, scan_x};
-assign man_pixel_y = {1'b0, sprite_y[man_index]} + {3'b0, scan_y};
-assign man_right = {1'b0, sprite_x[man_index]} + 7'd8;
-assign man_bottom = {1'b0, sprite_y[man_index]} + 7'd8;
-assign other_right = {1'b0, sprite_x[other_index]} + 7'd8;
-assign other_bottom = {1'b0, sprite_y[other_index]} + 7'd8;
-assign overlap_left = ({1'b0, sprite_x[man_index]} > {1'b0, sprite_x[other_index]})
-                    ? {1'b0, sprite_x[man_index]} : {1'b0, sprite_x[other_index]};
-assign overlap_top = ({1'b0, sprite_y[man_index]} > {1'b0, sprite_y[other_index]})
-                   ? {1'b0, sprite_y[man_index]} : {1'b0, sprite_y[other_index]};
-assign overlap_right = (man_right < other_right) ? man_right : other_right;
-assign overlap_bottom = (man_bottom < other_bottom) ? man_bottom : other_bottom;
-assign other_local_x = man_pixel_x - {1'b0, sprite_x[other_index]};
-assign other_local_y = man_pixel_y - {1'b0, sprite_y[other_index]};
-assign draw_pixel_x = {1'b0, sprite_x[draw_index]} + {4'b0, pixel_index[2:0]};
-assign draw_pixel_y = {1'b0, sprite_y[draw_index]} + {4'b0, pixel_index[5:3]};
-assign draw_rom_base = (sprite_type[draw_index] == 2'b00)
-                     ? ((man_state[draw_index] == 2'd1) ? 9'd64
-                     : (man_state[draw_index] == 2'd2) ? 9'd128 : 9'd0)
-                     : sprite_base(sprite_type[draw_index]);
+// ---------------- sprite field extraction ----------------------------------
+wire [5:0] mx = spr[0][13:8];
+wire [5:0] my = spr[0][7:2];
+wire [5:0] ox = spr[pair_i][13:8];
+wire [5:0] oy = spr[pair_i][7:2];
+wire [1:0] ot = spr[pair_i][1:0];
 
-function [8:0] sprite_base;
-    input [1:0] sprite_type_in;
-    begin
-        case (sprite_type_in)
-            2'b00: sprite_base = 9'd0;
-            2'b01: sprite_base = 9'd192;
-            2'b10: sprite_base = 9'd256;
-            default: sprite_base = 9'd320;
-        endcase
-    end
-endfunction
+wire [6:0] mx8 = {1'b0, mx} + 7'd8;
+wire [6:0] my8 = {1'b0, my} + 7'd8;
+wire [6:0] ox8 = {1'b0, ox} + 7'd8;
+wire [6:0] oy8 = {1'b0, oy} + 7'd8;
 
+wire [6:0] x0 = ({1'b0, mx} > {1'b0, ox}) ? {1'b0, mx} : {1'b0, ox};
+wire [6:0] y0 = ({1'b0, my} > {1'b0, oy}) ? {1'b0, my} : {1'b0, oy};
+wire [6:0] x1 = (mx8 < ox8) ? mx8 : ox8;
+wire [6:0] y1 = (my8 < oy8) ? my8 : oy8;
+
+wire ovl = ({1'b0, mx} < ox8) && ({1'b0, ox} < mx8) &&
+           ({1'b0, my} < oy8) && ({1'b0, oy} < my8);
+
+wire [6:0] x0_d = x0 - {1'b0, mx};      // window origin, Man local
+wire [6:0] y0_d = y0 - {1'b0, my};
+wire [6:0] x0_o = x0 - {1'b0, ox};      // window origin, other local
+wire [6:0] y0_o = y0 - {1'b0, oy};
+wire [6:0] x1_d = x1 - x0;              // window width
+wire [6:0] y1_d = y1 - y0;
+
+// ---------------- collision engine addresses -------------------------------
+wire [2:0] mr = sy0 + sys;
+wire [2:0] mc = sx0 + sxs;
+wire [2:0] or_ = oth0y + sys;
+wire [2:0] oc = oth0x + sxs;
+
+wire [8:0] man_addr  = {3'b000, mr, mc};
+wire [8:0] oth_addr  = {q_oth, or_, oc};
+wire [8:0] draw_addr = {cur_q, pix[5:3], pix[2:0]};
+wire [8:0] draw_nxt  = {cur_q, (pix + 6'd1)};
+
+// ---------------- draw engine addresses ------------------------------------
+wire [5:0]  dbx = cur_x + {3'b000, pix[2:0]};
+wire [5:0]  dby = cur_y + {3'b000, pix[5:3]};
+
+wire [1:0]  dtype = spr[di][1:0];
+wire        pass_sel = (pass == 2'd0) ? (dtype == 2'b11) :
+                       (pass == 2'd1) ? (dtype == 2'b01) || (dtype == 2'b10) :
+                                        (dtype == 2'b00);
+
+// ---------------- memory interface -----------------------------------------
+// The SRAM / frame-buffer macros have a 1 ns setup time with respect to the
+// rising clock edge, therefore every memory control signal is launched on the
+// falling edge (half a cycle of margin, exactly as required by the data sheet).
 always @(negedge clk or posedge reset) begin
     if (reset) begin
         SR_CEN <= 1'b1;
-        SR_A <= 9'd0;
+        SR_A   <= 9'd0;
         FB_CEN <= 1'b1;
         FB_WEN <= 1'b1;
-        FB_A <= 12'd0;
-        FB_D <= 12'd0;
-        man_mask_pixel <= 1'b0;
+        FB_A   <= 12'd0;
+        FB_D   <= 12'd0;
+        srmask <= 1'b0;
     end else begin
         SR_CEN <= 1'b1;
-        SR_A <= 9'd0;
+        SR_A   <= 9'd0;
         FB_CEN <= 1'b1;
         FB_WEN <= 1'b1;
-        FB_A <= 12'd0;
-        FB_D <= 12'd0;
-
-        if (state == S_WAIT_MAN)
-            man_mask_pixel <= SR_Q[0];
+        FB_A   <= 12'd0;
+        FB_D   <= 12'd0;
+        srmask <= SR_Q[0];
 
         case (state)
-            S_FILL: begin
+        S_FILL: begin
+            FB_CEN <= 1'b0;
+            FB_WEN <= 1'b0;
+            FB_A   <= fill_addr;
+            FB_D   <= BACKGROUND;
+        end
+        S_SCAN: begin
+            SR_CEN <= 1'b0;
+            SR_A   <= man_addr;
+        end
+        S_WSCAN: begin
+            if (SR_Q[0]) begin
+                SR_CEN <= 1'b0;
+                SR_A   <= oth_addr;
+            end
+        end
+        S_DREAD: begin
+            SR_CEN <= 1'b0;
+            SR_A   <= draw_addr;
+        end
+        S_DWAIT: begin
+            SR_CEN <= 1'b0;
+            SR_A   <= draw_nxt;
+            if (SR_Q[0]) begin
                 FB_CEN <= 1'b0;
                 FB_WEN <= 1'b0;
-                FB_A <= fill_address;
-                FB_D <= BACKGROUND;
+                FB_A   <= {dby, dbx};
+                FB_D   <= SR_Q[12:1];
             end
-            S_READ_MAN: begin
-                SR_CEN <= 1'b0;
-                SR_A <= {3'b000, scan_y[2:0], scan_x[2:0]};
-            end
-            S_WAIT_MAN: begin
-                if (SR_Q[0]) begin
-                    SR_CEN <= 1'b0;
-                    SR_A <= sprite_base(sprite_type[other_index])
-                          + {3'b000, other_local_y[2:0], other_local_x[2:0]};
-                end
-            end
-            S_DRAW_READ: begin
-                SR_CEN <= 1'b0;
-                SR_A <= draw_rom_base + {3'b0, pixel_index};
-            end
-            S_DRAW_WAIT: begin
-                if (pixel_index != 6'd63) begin
-                    SR_CEN <= 1'b0;
-                    SR_A <= draw_rom_base + {3'b0, pixel_index} + 9'd1;
-                end
-                if (SR_Q[0] && (draw_pixel_x < 7'd64)
-                            && (draw_pixel_y < 7'd64)) begin
-                    FB_CEN <= 1'b0;
-                    FB_WEN <= 1'b0;
-                    FB_A <= {draw_pixel_y[5:0], draw_pixel_x[5:0]};
-                    FB_D <= SR_Q[12:1];
-                end
-            end
-            default: begin
-            end
+        end
+        default: ;
         endcase
     end
 end
 
+// ---------------- control --------------------------------------------------
 always @(posedge clk or posedge reset) begin
     if (reset) begin
-        state <= S_IDLE;
-        done <= 1'b0;
-        sprite_count <= 6'd0;
-        fill_address <= 12'd0;
-        man_index <= 5'd0;
-        other_index <= 5'd0;
-        draw_index <= 5'd0;
-        scan_x <= 4'd0;
-        scan_y <= 4'd0;
-        scan_start_x <= 4'd0;
-        scan_start_y <= 4'd0;
-        scan_end_x <= 4'd0;
-        scan_end_y <= 4'd0;
-        pixel_index <= 6'd0;
-        draw_pass <= 2'd0;
-        man_hit_candy <= 1'b0;
-        man_hit_ghost <= 1'b0;
+        state      <= S_IDLE;
+        done       <= 1'b0;
+        n          <= 5'd0;
+        fill_addr  <= 12'd0;
+        pair_i     <= 5'd0;
+        di         <= 5'd0;
+        sxs        <= 3'd0;
+        sys        <= 3'd0;
+        sx0        <= 3'd0;
+        sy0        <= 3'd0;
+        sw         <= 4'd0;
+        sh         <= 4'd0;
+        oth0x      <= 3'd0;
+        oth0y      <= 3'd0;
+        q_oth      <= 3'd0;
+        pix        <= 6'd0;
+        pass       <= 2'd0;
+        cur_x      <= 6'd0;
+        cur_y      <= 6'd0;
+        cur_q      <= 3'd0;
+        hit_c      <= 1'b0;
+        hit_g      <= 1'b0;
+        man_state  <= 2'd0;
     end else begin
+        done <= 1'b0;
         case (state)
-            S_IDLE: begin
-                if (sprite) begin
-                    done <= 1'b0;
-                    if (sprite_count < MAX_SPRITES) begin
-                        sprite_x[sprite_count] <= X;
-                        sprite_y[sprite_count] <= Y;
-                        sprite_type[sprite_count] <= type;
-                        man_state[sprite_count] <= 2'd0;
-                        sprite_count <= sprite_count + 1'b1;
-                    end
-                end else if (start) begin
-                    done <= 1'b0;
-                    fill_address <= 12'd0;
-                    state <= S_FILL;
-                end
-            end
 
-            S_FILL: begin
-                if (fill_address == 12'd4095) begin
-                    man_index <= 5'd0;
-                    state <= S_FIND_MAN;
+        S_IDLE: begin
+            if (sprite) begin
+                if (n < NSPR) begin
+                    spr[n] <= {X, Y, type};
+                    n      <= n + 5'd1;
+                end
+            end else if (start) begin
+                fill_addr <= 12'd0;
+                pair_i    <= 5'd1;
+                hit_c     <= 1'b0;
+                hit_g     <= 1'b0;
+                pass      <= 2'd0;
+                di        <= 5'd0;
+                state     <= S_FILL;
+            end
+        end
+
+        S_FILL: begin
+            if (fill_addr == 12'd4095) begin
+                pair_i <= 5'd1;
+                state  <= S_PAIR;
+            end else begin
+                fill_addr <= fill_addr + 12'd1;
+            end
+        end
+
+        S_PAIR: begin
+            if (pair_i >= n) begin
+                state <= S_MST;
+            end else if ((ot == 2'b00) || (ot == 2'b11) || !ovl) begin
+                pair_i <= pair_i + 5'd1;
+            end else begin
+                sx0   <= x0_d[2:0];
+                sy0   <= y0_d[2:0];
+                sw    <= x1_d[3:0];
+                sh    <= y1_d[3:0];
+                oth0x <= x0_o[2:0];
+                oth0y <= y0_o[2:0];
+                q_oth <= {1'b0, ot} + 3'd2;
+                sxs   <= 3'd0;
+                sys   <= 3'd0;
+                state <= S_SCAN;
+            end
+        end
+
+        S_SCAN: begin
+            state <= S_WSCAN;
+        end
+
+        S_WSCAN: begin
+            if (srmask) begin
+                state <= S_WOTH;
+            end else if ({1'b0, sxs} + 4'd1 < sw) begin
+                sxs   <= sxs + 3'd1;
+                state <= S_SCAN;
+            end else if ({1'b0, sys} + 4'd1 < sh) begin
+                sxs   <= 3'd0;
+                sys   <= sys + 3'd1;
+                state <= S_SCAN;
+            end else begin
+                pair_i <= pair_i + 5'd1;
+                state  <= S_PAIR;
+            end
+        end
+
+        S_WOTH: begin
+            if (srmask) begin
+                if (q_oth == 3'd4) hit_c <= 1'b1;
+                else               hit_g <= 1'b1;
+                pair_i <= pair_i + 5'd1;
+                state  <= S_PAIR;
+            end else if ({1'b0, sxs} + 4'd1 < sw) begin
+                sxs   <= sxs + 3'd1;
+                state <= S_SCAN;
+            end else if ({1'b0, sys} + 4'd1 < sh) begin
+                sxs   <= 3'd0;
+                sys   <= sys + 3'd1;
+                state <= S_SCAN;
+            end else begin
+                pair_i <= pair_i + 5'd1;
+                state  <= S_PAIR;
+            end
+        end
+
+        S_MST: begin
+            man_state <= hit_c ? 2'd1 : (hit_g ? 2'd2 : 2'd0);
+            pass      <= 2'd0;
+            di        <= 5'd0;
+            state     <= S_DSEL;
+        end
+
+        S_DSEL: begin
+            if (di >= n) begin
+                if (pass == 2'd2) begin
+                    state <= S_DONE;
                 end else begin
-                    fill_address <= fill_address + 1'b1;
+                    pass <= pass + 2'd1;
+                    di   <= 5'd0;
                 end
+            end else if (!pass_sel) begin
+                di <= di + 5'd1;
+            end else begin
+                cur_x <= spr[di][13:8];
+                cur_y <= spr[di][7:2];
+                cur_q <= (dtype == 2'b00) ? {1'b0, man_state}
+                                          : ({1'b0, dtype} + 3'd2);
+                pix   <= 6'd0;
+                state <= S_DREAD;
             end
+        end
 
-            S_FIND_MAN: begin
-                if (man_index >= sprite_count) begin
-                    draw_pass <= 2'd0;
-                    draw_index <= 5'd0;
-                    state <= S_SELECT_DRAW;
-                end else if (sprite_type[man_index] != 2'b00) begin
-                    man_index <= man_index + 1'b1;
-                end else begin
-                    other_index <= 5'd0;
-                    man_hit_candy <= 1'b0;
-                    man_hit_ghost <= 1'b0;
-                    state <= S_FIND_PAIR;
-                end
-            end
+        S_DREAD: begin
+            state <= S_DWAIT;
+        end
 
-            S_FIND_PAIR: begin
-                if (other_index >= sprite_count) begin
-                    state <= S_SET_MAN_STATE;
-                end else if ((other_index == man_index)
-                          || (sprite_type[other_index] == 2'b00)
-                          || (sprite_type[other_index] == 2'b11)) begin
-                    other_index <= other_index + 1'b1;
-                end else if (({1'b0, sprite_x[man_index]} >= other_right)
-                          || ({1'b0, sprite_x[other_index]} >= man_right)
-                          || ({1'b0, sprite_y[man_index]} >= other_bottom)
-                          || ({1'b0, sprite_y[other_index]} >= man_bottom)) begin
-                    other_index <= other_index + 1'b1;
-                end else begin
-                    scan_x <= overlap_left - {1'b0, sprite_x[man_index]};
-                    scan_y <= overlap_top - {1'b0, sprite_y[man_index]};
-                    scan_start_x <= overlap_left - {1'b0, sprite_x[man_index]};
-                    scan_start_y <= overlap_top - {1'b0, sprite_y[man_index]};
-                    scan_end_x <= overlap_right - {1'b0, sprite_x[man_index]};
-                    scan_end_y <= overlap_bottom - {1'b0, sprite_y[man_index]};
-                    state <= S_READ_MAN;
-                end
+        S_DWAIT: begin
+            if (pix == 6'd63) begin
+                di    <= di + 5'd1;
+                state <= S_DSEL;
+            end else begin
+                pix <= pix + 6'd1;
             end
+        end
 
-            S_READ_MAN: begin
-                state <= S_WAIT_MAN;
-            end
+        S_DONE: begin
+            done  <= 1'b1;
+            n     <= 5'd0;
+            state <= S_IDLE;
+        end
 
-            S_WAIT_MAN: begin
-                if (man_mask_pixel) begin
-                    state <= S_WAIT_OTHER;
-                end else if ({1'b0, scan_x} + 4'd1 < scan_end_x) begin
-                    scan_x <= scan_x + 1'b1;
-                    state <= S_READ_MAN;
-                end else if ({1'b0, scan_y} + 4'd1 < scan_end_y) begin
-                    scan_x <= scan_start_x;
-                    scan_y <= scan_y + 1'b1;
-                    state <= S_READ_MAN;
-                end else begin
-                    other_index <= other_index + 1'b1;
-                    state <= S_FIND_PAIR;
-                end
-            end
-
-            S_WAIT_OTHER: begin
-                if (SR_Q[0]) begin
-                    if (sprite_type[other_index] == 2'b10)
-                        man_hit_candy <= 1'b1;
-                    else
-                        man_hit_ghost <= 1'b1;
-                    other_index <= other_index + 1'b1;
-                    state <= S_FIND_PAIR;
-                end else begin
-                    if ({1'b0, scan_x} + 4'd1 < scan_end_x) begin
-                        scan_x <= scan_x + 1'b1;
-                        state <= S_READ_MAN;
-                    end else if ({1'b0, scan_y} + 4'd1 < scan_end_y) begin
-                        scan_x <= scan_start_x;
-                        scan_y <= scan_y + 1'b1;
-                        state <= S_READ_MAN;
-                    end else begin
-                        other_index <= other_index + 1'b1;
-                        state <= S_FIND_PAIR;
-                    end
-                end
-            end
-
-            S_SET_MAN_STATE: begin
-                if (man_hit_candy)
-                    man_state[man_index] <= 2'd1;
-                else if (man_hit_ghost)
-                    man_state[man_index] <= 2'd2;
-                else
-                    man_state[man_index] <= 2'd0;
-                man_index <= man_index + 1'b1;
-                state <= S_FIND_MAN;
-            end
-
-            S_SELECT_DRAW: begin
-                if (draw_index >= sprite_count) begin
-                    if (draw_pass == 2'd2) begin
-                        state <= S_DONE;
-                    end else begin
-                        draw_pass <= draw_pass + 1'b1;
-                        draw_index <= 5'd0;
-                    end
-                end else if (((draw_pass == 2'd0)
-                           && (sprite_type[draw_index] != 2'b11))
-                          || ((draw_pass == 2'd1)
-                           && (sprite_type[draw_index] == 2'b00
-                            || sprite_type[draw_index] == 2'b11))
-                          || ((draw_pass == 2'd2)
-                           && (sprite_type[draw_index] != 2'b00))) begin
-                    draw_index <= draw_index + 1'b1;
-                end else begin
-                    pixel_index <= 6'd0;
-                    state <= S_DRAW_READ;
-                end
-            end
-
-            S_DRAW_READ: begin
-                state <= S_DRAW_WAIT;
-            end
-
-            S_DRAW_WAIT: begin
-                if (pixel_index == 6'd63) begin
-                    draw_index <= draw_index + 1'b1;
-                    state <= S_SELECT_DRAW;
-                end else begin
-                    pixel_index <= pixel_index + 1'b1;
-                end
-            end
-
-            S_DONE: begin
-                done <= 1'b1;
-                sprite_count <= 6'd0;
-                state <= S_IDLE;
-            end
-
-            default: begin
-                state <= S_IDLE;
-            end
+        default: state <= S_IDLE;
         endcase
     end
 end

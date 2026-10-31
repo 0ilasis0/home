@@ -1,0 +1,8 @@
+
+==================================================
+ Pattern 1: PASS | Time:  173800 ns | Errors: 0
+ Pattern 2: PASS | Time:  177100 ns | Errors: 0
+ Pattern 3: PASS | Time:  179900 ns | Errors: 0
+ Pattern 4: PASS | Time:  192600 ns | Errors: 0
+ Pattern 5: PASS | Time:  193800 ns | Errors: 0
+--------------------------------------------------
